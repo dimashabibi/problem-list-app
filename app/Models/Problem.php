@@ -17,13 +17,13 @@ class Problem extends Model
     protected $fillable = [
         'id_project',
         'id_kanban',
-        'item',
+        'id_item',
         'id_location',
         'type',
         'problem',
         'cause',
         'curative',
-        'attacment',
+        'attachment',
         'status',
         'id_user',
     ];
@@ -32,10 +32,19 @@ class Problem extends Model
     {
         return $this->belongsTo(Project::class, 'id_project', 'id_project');
     }
+    public function item()
+    {
+        return $this->belongsTo(Item::class, 'id_item', 'id_item');
+    }
 
     public function kanban()
     {
         return $this->belongsTo(Kanban::class, 'id_kanban', 'id_kanban');
+    }
+
+    public function itemRelation()
+    {
+        return $this->belongsTo(Item::class, 'item', 'id_item');
     }
 
     public function location()
@@ -46,5 +55,10 @@ class Problem extends Model
     public function reporter()
     {
         return $this->belongsTo(User::class, 'id_user', 'id_user');
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(ProblemAttachment::class, 'problem_id', 'id_problem');
     }
 }

@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    @include('layouts.title-meta', ['subTitle' => 'Dashboard'])
+    @include('layouts.title-meta', ['subTitle' => 'Dashboard | T-QIMS'])
     @include('layouts.head-css')
 </head>
 
@@ -48,12 +48,12 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-xl-3 col-md-6">
+                    <div class="col-xl-2 col-md-4">
                         <div class="card">
                             <div class="card-body">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div>
-                                        <p class="mb-3 card-title">Total Manufacturing Problem</p>
+                                        <p class="mb-3 card-title">Total Manufacturing</p>
                                         <h2 class="fw-bold text-primary d-flex align-items-center gap-2 mb-0">
                                             {{ $dataTotal['totalMfgProblems'] }}</h2>
                                     </div>
@@ -70,7 +70,29 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-md-6">
+                    <div class="col-xl-2 col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <p class="mb-3 card-title">Total Kentokai</p>
+                                        <h2 class="fw-bold text-primary d-flex align-items-center gap-2 mb-0">
+                                            {{ $dataTotal['totalKentokaiProblems'] }}</h2>
+                                    </div>
+                                    <div>
+                                        <i data-lucide="search" class="fs-32 text-primary"></i>
+                                    </div>
+                                </div>
+                                <div class="row align-items-center mt-4">
+                                    <div class="col-12">
+                                        <div id="kentokai_funnel" class="apex-charts"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-2 col-md-4">
                         <div class="card">
                             <div class="card-body">
                                 <div class="d-flex align-items-center justify-content-between">
@@ -92,7 +114,7 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-md-6">
+                    <div class="col-xl-2 col-md-4">
                         <div class="card">
                             <div class="card-body">
                                 <div class="d-flex align-items-center justify-content-between">
@@ -114,7 +136,7 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-md-6">
+                    <div class="col-xl-2 col-md-4">
                         <div class="card">
                             <div class="card-body">
                                 <div class="d-flex align-items-center justify-content-between">
@@ -135,6 +157,133 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="col-xl-2 col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <p class="mb-3 card-title">Total Buyoff</p>
+                                        <h2 class="fw-bold text-primary d-flex align-items-center gap-2 mb-0">
+                                            {{ $dataTotal['totalBuyoffProblems'] }}</h2>
+                                    </div>
+                                    <div>
+                                        <i data-lucide="check-circle" class="fs-32 text-primary"></i>
+                                    </div>
+                                </div>
+                                <div class="row align-items-center mt-4">
+                                    <div class="col-12">
+                                        <div id="buyoff_funnel" class="apex-charts"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-4">
+                        <div class="card">
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h4 class="card-title mb-0">Unresolved SK Problems.</h4>
+                                </div>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle btn btn-sm btn-link text-uppercase fw-semibold px-0"
+                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        Weekly
+                                    </a>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <!-- item-->
+                                        <a href="#!" class="dropdown-item">Week</a>
+                                        <!-- item-->
+                                        <a href="#!" class="dropdown-item">Months</a>
+                                        <!-- item-->
+                                        <a href="#!" class="dropdown-item">Years</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div class="text-center">
+                                    <p class="text-muted mb-0">You have <span
+                                            class="text-success fw-bold">{{ $thisWeekProblems['sk'] }}</span>
+                                        unresolved issues.</p>
+                                </div>
+                                <div id="columnChartSk" class="apex-charts"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4">
+                        <div class="card">
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h4 class="card-title mb-0">Unresolved KS Problems.</h4>
+                                </div>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle btn btn-sm btn-link text-uppercase fw-semibold px-0"
+                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        Weekly
+                                    </a>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <!-- item-->
+                                        <a href="#!" class="dropdown-item">Week</a>
+                                        <!-- item-->
+                                        <a href="#!" class="dropdown-item">Months</a>
+                                        <!-- item-->
+                                        <a href="#!" class="dropdown-item">Years</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div class="text-center">
+                                    <p class="text-muted mb-0">You have <span
+                                            class="text-success fw-bold">{{ $thisWeekProblems['ks'] }}</span>
+                                        unresolved issues.</p>
+                                </div>
+                                <div id="columnChartKs" class="apex-charts"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4">
+                        <div class="card">
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h4 class="card-title mb-0">Unresolved KD Problems.</h4>
+                                </div>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle btn btn-sm btn-link text-uppercase fw-semibold px-0"
+                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        Weekly
+                                    </a>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <!-- item-->
+                                        <a href="#!" class="dropdown-item">Week</a>
+                                        <!-- item-->
+                                        <a href="#!" class="dropdown-item">Months</a>
+                                        <!-- item-->
+                                        <a href="#!" class="dropdown-item">Years</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div class="text-center">
+                                    <p class="text-muted mb-0">You have <span
+                                            class="text-success fw-bold">{{ $thisWeekProblems['kd'] }}</span>
+                                        unresolved issues.</p>
+                                </div>
+                                <div id="columnChartKd" class="apex-charts"></div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <div class="row">
@@ -240,6 +389,9 @@
     <script>
         var pieData = @json($pieData);
         var columnChartData = @json($columnChart1);
+        var columnChartSkData = @json($columnChartSk);
+        var columnChartKdData = @json($columnChartKd);
+        var columnChartKsData = @json($columnChartKs);
     </script>
     <script src="{{ asset('assets/js/pages/dashboard.js') }}"></script>
 </body>

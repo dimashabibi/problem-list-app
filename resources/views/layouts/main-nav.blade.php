@@ -39,10 +39,10 @@
                     <span class="nav-icon">
                         <i data-lucide="triangle-alert"></i>
                     </span>
-                    <span class="nav-text"> Problem Lists </span>
+                    <span class="nav-text"> Problem List </span>
                 </a>
             </li>
-          
+
             <li class="menu-title">Project Management</li>
 
             <li class="menu-item">
@@ -51,6 +51,15 @@
                         <i data-lucide="origami"></i>
                     </span>
                     <span class="nav-text"> Project List </span>
+                </a>
+            </li>
+
+            <li class="menu-item">
+                <a class="menu-link" href="{{ url('/admin/items') }}">
+                    <span class="nav-icon">
+                        <i data-lucide="package"></i>
+                    </span>
+                    <span class="nav-text"> Item List </span>
                 </a>
             </li>
 

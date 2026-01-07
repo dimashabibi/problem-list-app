@@ -64,10 +64,10 @@
                                             <button type="submit" class="btn btn-primary">Login</button>
                                         </div>
                                     </form>
-                                    
+
                                 </div>
 
-                                <p class="text-muted text-center mt-4 mb-0">Don't have an account? </p>
+                                <a href="" class="text-center mt-4 mb-0">Forget Password?</a>
                             </div> <!-- end col -->
                         </div> <!-- end card-body -->
                     </div> <!-- end card -->

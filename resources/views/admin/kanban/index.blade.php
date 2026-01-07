@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    @include('layouts.title-meta', ['subTitle' => 'Kanban'])
+    @include('layouts.title-meta', ['subTitle' => 'Kanban List | T-QIMS'])
     @include('layouts.head-css')
 </head>
 

@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        if (!Schema::hasTable('kanbans')) {
+            Schema::create('kanbans', function (Blueprint $table) {
+                $table->integer('id_kanban')->autoIncrement();
+                $table->integer('project_id')->nullable();
+                $table->string('kanban_name', 20)->nullable();
+                $table->timestamps();
+                $table->softDeletes();
+
+                $table->foreign('project_id')
+                      ->references('id_project')->on('projects')
+                      ->onDelete('restrict')
+                      ->onUpdate('cascade');
+            });
+        }
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('kanbans');
+    }
+};

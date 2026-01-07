@@ -2,8 +2,53 @@
 <html lang="en">
 
 <head>
-    @include('layouts.title-meta', ['subTitle' => 'Problems'])
+    @include('layouts.title-meta', ['subTitle' => 'Problem List | T-QIMS'])
     @include('layouts.head-css')
+    <link href="{{ asset('assets/vendor/dropzone/dropzone.css') }}" rel="stylesheet" type="text/css" />
+    <style>
+        /* Custom Dropzone Preview Styles */
+        #dropzone-preview .card {
+            margin-bottom: 0.5rem;
+            border: 1px solid #e9ebec;
+            box-shadow: none;
+        }
+        #dropzone-preview .card-body {
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #dropzone-preview .file-details {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+        }
+        #dropzone-preview .dz-image {
+            width: 40px;
+            height: 40px;
+            margin-right: 15px;
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: #eee;
+        }
+        #dropzone-preview .dz-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #dropzone-preview .file-info h6 {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        #dropzone-preview .file-info small {
+            color: #6c757d;
+        }
+        #dropzone-preview .dz-remove {
+            margin-left: 10px;
+        }
+    </style>
 </head>
 
 <body>
@@ -32,6 +77,12 @@
                                 </a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#kentokai" role="tab"
+                                    data-type="kentokai">
+                                    <span class="d-none d-sm-block">Kentokai</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link" data-bs-toggle="tab" href="#ks" role="tab" data-type="ks">
                                     <span class="d-none d-sm-block">KS</span>
                                 </a>
@@ -44,6 +95,12 @@
                             <li class="nav-item">
                                 <a class="nav-link" data-bs-toggle="tab" href="#sk" role="tab" data-type="sk">
                                     <span class="d-none d-sm-block">SK</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#buyoff" role="tab"
+                                    data-type="buyoff">
+                                    <span class="d-none d-sm-block">Buy Off</span>
                                 </a>
                             </li>
                         </ul>
@@ -60,6 +117,7 @@
     </div>
 
     @include('layouts.vendor-scripts')
+    <script src="{{ asset('assets/vendor/dropzone/dropzone-min.js') }}"></script>
     <script src="{{ asset('assets/js/pages/problems.js') }}"></script>
     <script src="{{ asset('assets/js/components/form-clipboard.js') }}"></script>
     <script>

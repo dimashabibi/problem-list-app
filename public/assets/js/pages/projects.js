@@ -39,6 +39,14 @@
         }
         },
         columns: [
+            {
+                data: 'id_project',
+                orderable: false,
+                className: 'text-center',
+                render: function (data) {
+                    return `<input type="checkbox" class="form-check-input project-checkbox" value="${data}">`;
+                }
+            },
             { 
                 data: null, 
                 render: function (data, type, row, meta) {
@@ -59,8 +67,21 @@
                 }
             }
         ],
-        responsive: true
+        responsive: true,
+        drawCallback: function() {
+            $('#selectAll').prop('checked', false);
+            toggleBulkDeleteBtn();
+        }
     });
+  }
+
+  function toggleBulkDeleteBtn() {
+      var count = $('.project-checkbox:checked').length;
+      if (count > 0) {
+          $('#btnBulkDelete').removeClass('d-none').text(`Delete Selected (${count})`);
+      } else {
+          $('#btnBulkDelete').addClass('d-none');
+      }
   }
 
   function openModal(title, data){
@@ -101,6 +122,53 @@
 
   $(document).ready(function(){
     initTable();
+
+    // Select All checkbox
+    $(document).on('change', '#selectAll', function() {
+        $('.project-checkbox').prop('checked', $(this).prop('checked'));
+        toggleBulkDeleteBtn();
+    });
+
+    // Individual checkbox
+    $(document).on('change', '.project-checkbox', function() {
+        var allChecked = $('.project-checkbox:checked').length === $('.project-checkbox').length;
+        $('#selectAll').prop('checked', allChecked);
+        toggleBulkDeleteBtn();
+    });
+
+    // Bulk Delete Button
+    $('#btnBulkDelete').off('click').on('click', function() {
+        var ids = [];
+        $('.project-checkbox:checked').each(function() {
+            ids.push($(this).val());
+        });
+
+        if (ids.length === 0) return;
+
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Delete selected projects?',
+                text: `You are about to delete ${ids.length} projects.`,
+                showCancelButton: true,
+                cancelButtonText: 'Cancel',
+                confirmButtonText: 'Delete',
+            }).then(function(result){
+                if (result.isConfirmed) {
+                    ajax({ url: '/projects/bulk', method: 'DELETE', data: { ids: ids } }).done(function(){
+                        if (window.Swal) {
+                            Swal.fire({ icon: 'success', title: 'Projects Deleted', timer: 1200, showConfirmButton: false });
+                        }
+                        if (table) table.ajax.reload();
+                    });
+                }
+            });
+        } else {
+            if(confirm(`Delete ${ids.length} selected projects?`)){
+                ajax({ url: '/projects/bulk', method: 'DELETE', data: { ids: ids } }).done(function(){ if (table) table.ajax.reload(); });
+            }
+        }
+    });
 
     $('#btnAdd').off('click').on('click', function(){
       openModal('Add Project', null);

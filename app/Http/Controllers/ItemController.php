@@ -2,42 +2,45 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Project;
+use App\Models\Item;
 use Illuminate\Http\Request;
 
-class ProjectController extends Controller
+class ItemController extends Controller
 {
     public function index()
     {
-        return view('projects.index');
+        return view('admin.item.index');
+    }
+
+    public function table()
+    {
+        return view('admin.item.table');
     }
 
     public function list(Request $request)
     {
-        return response()->json(Project::orderBy('id_project', 'desc')->get());
+        return response()->json(Item::orderBy('id_item', 'desc')->get());
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'project_name' => 'required|string|max:20',
-            'description' => 'nullable|string',
+            'item_name' => 'required|string|max:50',
         ]);
 
-        $project = Project::create($validated);
-        return response()->json(['success' => true, 'data' => $project]);
+        $item = Item::create($validated);
+        return response()->json(['success' => true, 'data' => $item]);
     }
 
     public function bulkStore(Request $request)
     {
         $validated = $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.project_name' => 'required|string|max:20',
-            'items.*.description' => 'nullable|string',
+            'items.*.item_name' => 'required|string|max:50'
         ]);
         $created = [];
         foreach ($validated['items'] as $item) {
-            $created[] = Project::create($item);
+            $created[] = Item::create($item);
         }
         return response()->json(['success' => true, 'data' => $created]);
     }
@@ -45,19 +48,19 @@ class ProjectController extends Controller
     public function update(Request $request, int $id)
     {
         $validated = $request->validate([
-            'project_name' => 'required|string|max:20',
+            'item_name' => 'required|string|max:50',
             'description' => 'nullable|string',
         ]);
 
-        $project = Project::findOrFail($id);
-        $project->update($validated);
-        return response()->json(['success' => true, 'data' => $project]);
+        $item = Item::findOrFail($id);
+        $item->update($validated);
+        return response()->json(['success' => true, 'data' => $item]);
     }
 
     public function destroy(int $id)
     {
-        $project = Project::findOrFail($id);
-        $project->delete();
+        $item = Item::findOrFail($id);
+        $item->delete();
         return response()->json(['success' => true]);
     }
 
@@ -65,10 +68,10 @@ class ProjectController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:projects,id_project',
+            'ids.*' => 'integer|exists:items,id_item',
         ]);
 
-        Project::whereIn('id_project', $validated['ids'])->delete();
+        Item::whereIn('id_item', $validated['ids'])->delete();
 
         return response()->json(['success' => true]);
     }

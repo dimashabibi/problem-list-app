@@ -32,8 +32,9 @@ class ProblemController extends Controller
     public function list(Request $request)
     {
         $q = Problem::query()
-            ->with(['project', 'kanban', 'location', 'reporter'])
+            ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
             ->orderBy('id_problem', 'desc');
+        if ($request->filled('item_id')) $q->where('id_item', $request->integer('item_id'));
         if ($request->filled('project_id')) $q->where('id_project', $request->integer('project_id'));
         if ($request->filled('kanban_id')) $q->where('id_kanban', $request->integer('kanban_id'));
         if ($request->filled('type')) $q->where('type', $request->string('type'));
@@ -44,13 +45,14 @@ class ProblemController extends Controller
                 'created_at' => $p->created_at,
                 'project' => $p->project?->project_name,
                 'kanban' => $p->kanban?->kanban_name,
-                'item' => $p->item,
+                'item' => $p->item?->item_name ?? $p->item, // Fallback to raw value if relation fails
                 'location' => $p->location?->location_name,
                 'type' => $p->type === 'manufacturing' ? 'Manufacturing' : strtoupper($p->type),
                 'problem' => $p->problem,
                 'cause' => $p->cause,
                 'curative' => $p->curative,
-                'attachment' => $p->attacment,
+                'attachment' => $p->attachment,
+                'attachments' => $p->attachments->map(fn($a) => $a->file_path)->toArray(),
                 'status' => $p->status ?? 'dispatched', // Fallback for existing null records
                 'reporter' => $p->reporter?->fullname ?? $p->reporter?->username,
             ];
@@ -60,13 +62,13 @@ class ProblemController extends Controller
     public function store(Request $request)
     {
         $rules = [
-            'item' => 'required|string|max:100',
             'id_location' => 'required|integer|exists:locations,id_location',
-            'type' => 'required|in:manufacturing,ks,kd,sk',
+            'type' => 'required|in:manufacturing,ks,kd,sk,kentokai,buyoff',
             'problem' => 'required|string',
             'cause' => 'nullable|string',
             'curative' => 'nullable|string',
-            'attachment' => 'nullable|file|image|max:4096',
+            'attachment' => 'nullable|array',
+            'attachment.*' => 'image|max:4096',
         ];
 
         // Conditional validation
@@ -82,6 +84,13 @@ class ProblemController extends Controller
             } else {
                 $rules['id_kanban'] = 'required|integer|exists:kanbans,id_kanban';
             }
+        }
+
+        // Conditional Item Validation
+        if ($request->filled('new_item_name')) {
+            $rules['new_item_name'] = 'required|string|max:50|unique:items,item_name';
+        } else {
+            $rules['id_item'] = 'required|integer|exists:items,id_item';
         }
 
         $validated = $request->validate($rules);
@@ -106,51 +115,104 @@ class ProblemController extends Controller
             $kanbanId = $kanban->id_kanban;
         }
 
-        $path = null;
-        if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('attachments', 'public');
+        // Handle Item Creation
+        $itemId = $request->input('id_item');
+        if ($request->filled('new_item_name')) {
+            $item = \App\Models\Item::create([
+                'item_name' => $request->input('new_item_name'),
+                'description' => 'Created via Problem'
+            ]);
+            $itemId = $item->id_item;
         }
 
-        $problem = Problem::create([
+        // Handle File Uploads
+        $mainAttachmentPath = null;
+        $attachmentPaths = [];
+
+        if ($request->hasFile('attachment')) {
+            foreach ($request->file('attachment') as $file) {
+                $path = $file->store('attachments', 'public');
+                $attachmentPaths[] = $path;
+                if (!$mainAttachmentPath) {
+                    $mainAttachmentPath = $path;
+                }
+            }
+        }
+
+        $problemData = array_merge($validated, [
             'id_project' => $projectId,
             'id_kanban' => $kanbanId,
-            'item' => $validated['item'],
-            'id_location' => $validated['id_location'],
-            'type' => $validated['type'],
-            'problem' => $validated['problem'],
-            'cause' => $validated['cause'] ?? '',
-            'curative' => $validated['curative'] ?? '',
-            'attacment' => $path,
-            'id_user' => Auth::user()->id_user,
+            'id_item' => $itemId,
+            'id_location' => $request->input('id_location'),
+            'type' => $request->input('type'),
+            'problem' => $request->input('problem'),
+            'cause' => $request->input('cause'),
+            'curative' => $request->input('curative'),
+            'attachment' => $mainAttachmentPath,
+            'status' => 'dispatched',
+            'id_user' => Auth::id() ?? 1
         ]);
-        return response()->json(['success' => true, 'data' => $problem]);
+
+        $problem = Problem::create($problemData);
+
+        foreach ($attachmentPaths as $path) {
+            \App\Models\ProblemAttachment::create([
+                'problem_id' => $problem->id_problem,
+                'file_path' => $path
+            ]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     public function destroy(int $id)
     {
-        $p = Problem::findOrFail($id);
-        if ($p->attacment) {
+        $p = Problem::with('attachments')->findOrFail($id);
+
+        // Delete main attachment if exists (though it should be in attachments table too if created new)
+        // But for old records, we check attachment column
+        if ($p->attachment) {
             try {
-                Storage::disk('public')->delete($p->attacment);
+                Storage::disk('public')->delete($p->attachment);
             } catch (\Throwable $e) {
             }
         }
-        $p->delete();
+
+        // Delete all related attachments
+        foreach ($p->attachments as $attachment) {
+            try {
+                // Check if it is different from main attachment to avoid double delete attempt? 
+                // Storage delete doesn't throw if file missing usually, or we catch it.
+                if ($attachment->file_path !== $p->attachment) {
+                    Storage::disk('public')->delete($attachment->file_path);
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        $p->delete(); // Cascade deletes attachment records from DB
         return response()->json(['success' => true]);
     }
 
     public function updateStatus(Request $request, int $id)
     {
+        // Validasi status yang dikirimkan
         $request->validate([
             'status' => 'required|in:dispatched,in_progress,closed'
         ]);
 
-        $p = Problem::findOrFail($id);
-        $p->status = $request->status;
-        $p->save();
+        // Menemukan problem berdasarkan ID
+        $problem = Problem::findOrFail($id);
 
+        // Mengubah status sesuai dengan request
+        $problem->status = $request->status;
+        $problem->save();
+
+        // Mengembalikan response sukses
         return response()->json(['success' => true]);
     }
+
+
 
     public function export(int $id)
     {
@@ -299,8 +361,8 @@ class ProblemController extends Controller
             $sheet->mergeCells('B12:AC28');
             $sheet->getStyle('B12')->applyFromArray($centerStyle);
 
-            if ($problem->attacment) {
-                $imagePath = storage_path('app/public/' . $problem->attacment);
+            if ($problem->attachment) {
+                $imagePath = storage_path('app/public/' . $problem->attachment);
                 if (file_exists($imagePath)) {
                     $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
                     $drawing->setName('Attachment');

@@ -23,6 +23,8 @@ class DashboardController extends Controller
 
         $dataTotal = [
             'totalMfgProblems' => (clone $query)->where('type', 'manufacturing')->count(),
+            'totalKentokaiProblems' => (clone $query)->where('type', 'kentokai')->count(),
+            'totalBuyoffProblems' => (clone $query)->where('type', 'buyoff')->count(),
             'totalKsProblems' => (clone $query)->where('type', 'ks')->count(),
             'totalKdProblems' => (clone $query)->where('type', 'kd')->count(),
             'totalSkProblems' => (clone $query)->where('type', 'sk')->count(),
@@ -30,10 +32,22 @@ class DashboardController extends Controller
 
         $thisWeekProblems = [
 
-            'pie'     => Problem::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->where('problems.type', 'manufacturing')->count(),
+            'pie'     => Problem::whereBetween('created_at', [$startDate, $endDate])->where('problems.type', 'manufacturing')->count(),
             'column1' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
-                ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+                ->whereBetween('created_at', [$startDate, $endDate])
                 ->where('type', 'manufacturing')
+                ->first()->closed,
+            'sk' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->where('type', 'sk')
+                ->first()->closed,
+            'ks' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->where('type', 'ks')
+                ->first()->closed,
+            'kd' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->where('type', 'kd')
                 ->first()->closed,
         ];
 
@@ -41,15 +55,16 @@ class DashboardController extends Controller
         $pieQuery = Problem::select(DB::raw('count(*) as total'), 'projects.project_name')
             ->join('projects', 'problems.id_project', '=', 'projects.id_project')
             ->where('problems.type', 'manufacturing');
-        
+
         if ($startDate && $endDate) {
             $pieQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
         }
-            
+
         $pieData = $pieQuery->groupBy('problems.id_project', 'projects.project_name')
             ->get()
             ->pluck('total', 'project_name');
 
+        // Chart data untuk manufacturing
         $chartDataQuery = Problem::select(
             DB::raw('count(*) as total'),
             DB::raw("sum(case when status = 'closed' then 1 else 0 end) as closed"),
@@ -70,8 +85,102 @@ class DashboardController extends Controller
             'total' => $chartData->pluck('total'),
             'closed' => $chartData->pluck('closed'),
         ];
+        // data chart manufaktur end
+
+        // data chart untuk sk
+        $skDataQuery = Problem::select(
+            DB::raw('count(*) as total'),
+            DB::raw("sum(case when status = 'closed' then 1 else 0 end) as closed"),
+            'projects.project_name'
+        )
+            ->join('projects', 'problems.id_project', '=', 'projects.id_project')
+            ->where('problems.type', 'sk');
+
+        if ($startDate && $endDate) {
+            $skDataQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        }
+
+        $chartData = $skDataQuery->groupBy('problems.id_project', 'projects.project_name')
+            ->get();
+
+        $columnChartSk = [
+            'labels' => $chartData->pluck('project_name'),
+            'total' => $chartData->pluck('total'),
+            'closed' => $chartData->pluck('closed'),
+        ];
+        // data chart sk end
+
+        // data chart untuk ks
+        $ksDataQuery = Problem::select(
+            DB::raw('count(*) as total'),
+            DB::raw("sum(case when status = 'closed' then 1 else 0 end) as closed"),
+            'projects.project_name'
+        )
+            ->join('projects', 'problems.id_project', '=', 'projects.id_project')
+            ->where('problems.type', 'ks');
+
+        if ($startDate && $endDate) {
+            $ksDataQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        }
+
+        $chartData = $ksDataQuery->groupBy('problems.id_project', 'projects.project_name')
+            ->get();
+
+        $columnChartKs = [
+            'labels' => $chartData->pluck('project_name'),
+            'total' => $chartData->pluck('total'),
+            'closed' => $chartData->pluck('closed'),
+        ];
+        // data chart ks end
+        // data chart untuk sk
+        $skDataQuery = Problem::select(
+            DB::raw('count(*) as total'),
+            DB::raw("sum(case when status = 'closed' then 1 else 0 end) as closed"),
+            'projects.project_name'
+        )
+            ->join('projects', 'problems.id_project', '=', 'projects.id_project')
+            ->where('problems.type', 'sk');
+
+        if ($startDate && $endDate) {
+            $skDataQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        }
+
+        $chartData = $skDataQuery->groupBy('problems.id_project', 'projects.project_name')
+            ->get();
+
+        $columnChartSk = [
+            'labels' => $chartData->pluck('project_name'),
+            'total' => $chartData->pluck('total'),
+            'closed' => $chartData->pluck('closed'),
+        ];
+        // data chart sk end
+
+        // data chart untuk kd
+        $kdDataQuery = Problem::select(
+            DB::raw('count(*) as total'),
+            DB::raw("sum(case when status = 'closed' then 1 else 0 end) as closed"),
+            'projects.project_name'
+        )
+            ->join('projects', 'problems.id_project', '=', 'projects.id_project')
+            ->where('problems.type', 'kd');
+
+        if ($startDate && $endDate) {
+            $kdDataQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        }
+
+        $chartData = $kdDataQuery->groupBy('problems.id_project', 'projects.project_name')
+            ->get();
+
+        $columnChartKd = [
+            'labels' => $chartData->pluck('project_name'),
+            'total' => $chartData->pluck('total'),
+            'closed' => $chartData->pluck('closed'),
+        ];
+        // data chart kd end
 
 
-        return view('admin.index', compact('pieData', 'columnChart1', 'dataTotal', 'thisWeekProblems', 'startDate', 'endDate'));
+
+
+        return view('admin.index', compact('pieData', 'columnChart1', 'columnChartSk', 'columnChartKd', 'columnChartKs', 'dataTotal', 'thisWeekProblems', 'startDate', 'endDate'));
     }
 }
