@@ -21,27 +21,51 @@
                                     <!-- Row 1 -->
                                     <div class="col-md-6">
                                         <label for="d_project" class="form-label">Project</label>
-                                        <input type="text" id="d_project" class="form-control" disabled>
+                                        <select id="d_project" class="form-control" disabled>
+                                            <option value="">Select project</option>
+                                            @foreach (\App\Models\Project::orderBy('project_name')->get() as $p)
+                                                <option value="{{ $p->id_project }}">{{ $p->project_name }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="d_kanban" class="form-label">Kanban</label>
-                                        <input type="text" id="d_kanban" class="form-control" disabled>
+                                        <select id="d_kanban" class="form-control" disabled>
+                                            <option value="">Select kanban</option>
+                                        </select>
                                     </div>
 
                                     <!-- Row 2 -->
                                     <div class="col-md-6">
                                         <label for="d_item" class="form-label">Item</label>
-                                        <input type="text" id="d_item" class="form-control" disabled>
+                                        <select id="d_item" class="form-control" disabled>
+                                            <option value="">Select item</option>
+                                            @foreach (\App\Models\Item::orderBy('item_name')->get() as $i)
+                                                <option value="{{ $i->id_item }}">{{ $i->item_name }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="d_location" class="form-label">Location</label>
-                                        <input type="text" id="d_location" class="form-control" disabled>
+                                        <select id="d_location" class="form-control" disabled>
+                                            <option value="">Select location</option>
+                                            @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
+                                                <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
 
                                     <!-- Row 3 -->
                                     <div class="col-md-6">
                                         <label for="d_type" class="form-label">Type</label>
-                                        <input type="text" id="d_type" class="form-control" disabled>
+                                        <select id="d_type" class="form-control" disabled>
+                                            <option value="manufacturing">Manufacturing</option>
+                                            <option value="kentokai">Kentokai</option>
+                                            <option value="ks">KS</option>
+                                            <option value="kd">KD</option>
+                                            <option value="sk">SK</option>
+                                            <option value="buyoff">Buyoff</option>
+                                        </select>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="d_status" class="form-label">Status</label>
@@ -81,6 +105,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="btn-edit-problem">Edit</button>
+                <button type="button" class="btn btn-success d-none" id="btn-save-problem">Save</button>
             </div>
         </div>
     </div>

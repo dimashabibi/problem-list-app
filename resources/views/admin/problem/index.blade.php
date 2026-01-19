@@ -66,7 +66,10 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Problems</h5>
-                        <button id="btnProblemAdd" class="btn btn-primary">Add Problem</button>
+                        <div>
+                            <button id="btnExportList" class="btn btn-success me-2">Export List</button>
+                            <button id="btnProblemAdd" class="btn btn-primary">Add Problem</button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <ul class="nav nav-tabs nav-tabs-custom nav-justified mb-3" role="tablist">

@@ -110,6 +110,34 @@
                         </div>
                         <div class="col-md-12">
                             <div class="mb-3">
+                                <label class="form-label d-block">Problem Code</label>
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-4">
+                                        <select id="group_code_select" name="group_code_select" class="form-select">
+                                            <option value="">Select existing code</option>
+                                            <option value="__new__">+ New Code</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="text" id="group_code_suffix" class="form-control d-none"
+                                            placeholder="New code suffix">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div id="group_code_preview" class="form-text text-muted"></div>
+                                    </div>
+                                    <div class="col-md-1 text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            id="group_code_clear">
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="group_code_mode" name="group_code_mode">
+                                <input type="hidden" id="group_code" name="group_code">
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="mb-3">
                                 <label class="form-label">Problem</label>
                                 <textarea class="form-control" id="p_problem" rows="2" required></textarea>
                             </div>

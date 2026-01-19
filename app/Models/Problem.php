@@ -26,6 +26,8 @@ class Problem extends Model
         'attachment',
         'status',
         'id_user',
+        'group_code',
+        'group_code_norm',
     ];
 
     public function project()

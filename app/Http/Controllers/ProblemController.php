@@ -5,17 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Problem;
 use App\Models\Project;
 use App\Models\Kanban;
-use App\Models\Location;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class ProblemController extends Controller
 {
@@ -44,10 +43,17 @@ class ProblemController extends Controller
                 'id_problem' => $p->id_problem,
                 'created_at' => $p->created_at,
                 'project' => $p->project?->project_name,
+                'id_project' => $p->id_project,
+                'id_kanban' => $p->id_kanban,
+                'id_item' => $p->id_item,
+                'id_location' => $p->id_location,
                 'kanban' => $p->kanban?->kanban_name,
                 'item' => $p->item?->item_name ?? $p->item, // Fallback to raw value if relation fails
                 'location' => $p->location?->location_name,
                 'type' => $p->type === 'manufacturing' ? 'Manufacturing' : strtoupper($p->type),
+                'raw_type' => $p->type,
+                'group_code' => $p->group_code,
+                'group_code_norm' => $p->group_code_norm,
                 'problem' => $p->problem,
                 'cause' => $p->cause,
                 'curative' => $p->curative,
@@ -57,6 +63,78 @@ class ProblemController extends Controller
                 'reporter' => $p->reporter?->fullname ?? $p->reporter?->username,
             ];
         }));
+    }
+
+    public function problemCodes(Request $request)
+    {
+        $type = $request->query('type');
+        $projectId = $request->query('id_project');
+        $kanbanId = $request->query('id_kanban');
+
+        $query = Problem::query()
+            ->selectRaw('MAX(group_code) as code, group_code_norm as code_norm, COUNT(*) as total_problems, MAX(created_at) as last_used')
+            ->whereNotNull('group_code_norm')
+            ->where('group_code_norm', '<>', '');
+
+        if ($type) {
+            $query->where('type', strtolower($type));
+        }
+        if ($projectId) {
+            $query->where('id_project', $projectId);
+        }
+        if ($kanbanId) {
+            $query->where('id_kanban', $kanbanId);
+        }
+
+        $codes = $query
+            ->groupBy('group_code_norm')
+            ->orderByDesc('last_used')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'code' => $row->code,
+                    'code_norm' => $row->code_norm,
+                    'total_problems' => (int) $row->total_problems,
+                    'last_used' => $row->last_used instanceof \Carbon\Carbon
+                        ? $row->last_used->toDateTimeString()
+                        : (string) $row->last_used,
+                ];
+            });
+
+        if ($codes->isEmpty()) {
+            Log::info('problem-codes empty', [
+                'type' => $type,
+                'project_id' => $projectId,
+                'kanban_id' => $kanbanId,
+            ]);
+        }
+
+        return response()->json($codes);
+    }
+
+    private function typeShort(string $type): string
+    {
+        $map = [
+            'manufacturing' => 'MFG',
+            'kentokai' => 'KTC',
+            'ks' => 'KS',
+            'kd' => 'KD',
+            'sk' => 'SK',
+            'buyoff' => 'BO',
+        ];
+
+        $type = strtolower($type);
+        return $map[$type] ?? strtoupper(substr($type, 0, 3));
+    }
+
+    private function normalizeForCode(string $name): string
+    {
+        $name = strtoupper(trim($name));
+        $name = preg_replace('/\s+/', ' ', $name);
+        $name = str_replace(' ', '-', $name);
+        $name = preg_replace('/[^A-Z0-9\-]/', '', $name);
+
+        return $name;
     }
 
     public function store(Request $request)
@@ -69,6 +147,10 @@ class ProblemController extends Controller
             'curative' => 'nullable|string',
             'attachment' => 'nullable|array',
             'attachment.*' => 'image|max:4096',
+            'group_code' => 'required|string|max:100',
+            'group_code_mode' => 'required|in:existing,new',
+            'group_code_existing' => 'nullable|string|max:100|required_if:group_code_mode,existing',
+            'group_code_suffix' => 'nullable|string|max:100|required_if:group_code_mode,new',
         ];
 
         // Conditional validation
@@ -86,7 +168,6 @@ class ProblemController extends Controller
             }
         }
 
-        // Conditional Item Validation
         if ($request->filled('new_item_name')) {
             $rules['new_item_name'] = 'required|string|max:50|unique:items,item_name';
         } else {
@@ -95,7 +176,6 @@ class ProblemController extends Controller
 
         $validated = $request->validate($rules);
 
-        // Handle Project Creation
         $projectId = $request->input('id_project');
         if ($request->filled('new_project_name')) {
             $project = Project::create([
@@ -105,7 +185,6 @@ class ProblemController extends Controller
             $projectId = $project->id_project;
         }
 
-        // Handle Kanban Creation
         $kanbanId = $request->input('id_kanban');
         if ($request->filled('new_kanban_name')) {
             $kanban = Kanban::create([
@@ -115,7 +194,6 @@ class ProblemController extends Controller
             $kanbanId = $kanban->id_kanban;
         }
 
-        // Handle Item Creation
         $itemId = $request->input('id_item');
         if ($request->filled('new_item_name')) {
             $item = \App\Models\Item::create([
@@ -125,7 +203,6 @@ class ProblemController extends Controller
             $itemId = $item->id_item;
         }
 
-        // Handle File Uploads
         $mainAttachmentPath = null;
         $attachmentPaths = [];
 
@@ -135,6 +212,47 @@ class ProblemController extends Controller
                 $attachmentPaths[] = $path;
                 if (!$mainAttachmentPath) {
                     $mainAttachmentPath = $path;
+                }
+            }
+        }
+
+        $groupCode = null;
+        $groupCodeNorm = null;
+        $mode = $request->input('group_code_mode');
+        $explicitGroupCode = trim((string) $request->input('group_code', ''));
+        $type = $request->input('type');
+        $project = null;
+        $kanban = null;
+
+        if ($type && $projectId) {
+            $project = Project::find($projectId);
+        }
+        if ($type && $kanbanId) {
+            $kanban = Kanban::find($kanbanId);
+        }
+
+        if ($explicitGroupCode !== '') {
+            $groupCode = $explicitGroupCode;
+            $groupCodeNorm = strtoupper($groupCode);
+        } else {
+            if ($mode === 'existing') {
+                $code = trim((string) $request->input('group_code_existing', ''));
+                if ($code !== '') {
+                    $groupCode = $code;
+                    $groupCodeNorm = strtoupper($code);
+                }
+            } elseif ($mode === 'new') {
+                $suffix = trim((string) $request->input('group_code_suffix', ''));
+
+                if ($suffix !== '' && $project && $kanban) {
+                    $typeShort = $this->typeShort($type);
+                    $projectPart = $this->normalizeForCode($project->project_name ?? '');
+                    $kanbanPart = $this->normalizeForCode($kanban->kanban_name ?? '');
+
+                    $prefix = $typeShort . '_' . $projectPart . '_' . $kanbanPart . '_';
+
+                    $groupCode = trim($prefix . $suffix);
+                    $groupCodeNorm = strtoupper($groupCode);
                 }
             }
         }
@@ -150,7 +268,9 @@ class ProblemController extends Controller
             'curative' => $request->input('curative'),
             'attachment' => $mainAttachmentPath,
             'status' => 'dispatched',
-            'id_user' => Auth::id() ?? 1
+            'id_user' => Auth::id() ?? 1,
+            'group_code' => $groupCode,
+            'group_code_norm' => $groupCodeNorm,
         ]);
 
         $problem = Problem::create($problemData);
@@ -161,6 +281,37 @@ class ProblemController extends Controller
                 'file_path' => $path
             ]);
         }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function update(Request $request, int $id)
+    {
+        $problem = Problem::findOrFail($id);
+
+        $rules = [
+            'id_project' => 'required|integer|exists:projects,id_project',
+            'id_kanban' => 'required|integer|exists:kanbans,id_kanban',
+            'id_item' => 'required|integer|exists:items,id_item',
+            'id_location' => 'required|integer|exists:locations,id_location',
+            'type' => 'required|in:manufacturing,ks,kd,sk,kentokai,buyoff',
+            'problem' => 'required|string',
+            'cause' => 'nullable|string',
+            'curative' => 'nullable|string',
+        ];
+
+        $validated = $request->validate($rules);
+
+        $problem->update([
+            'id_project' => $request->input('id_project'),
+            'id_kanban' => $request->input('id_kanban'),
+            'id_item' => $request->input('id_item'),
+            'id_location' => $request->input('id_location'),
+            'type' => $request->input('type'),
+            'problem' => $request->input('problem'),
+            'cause' => $request->input('cause'),
+            'curative' => $request->input('curative'),
+        ]);
 
         return response()->json(['success' => true]);
     }
@@ -214,10 +365,282 @@ class ProblemController extends Controller
 
 
 
+    public function exportList(Request $request)
+    {
+        $type = $request->query('type');
+        $status = $request->query('status');
+
+        $query = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
+            ->orderBy('created_at', 'asc');
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $problems = $query->get();
+
+        if (strtolower($type) === 'kentokai') {
+            return $this->exportKentokaiIssueList($problems, "Kentokai_Issue_List_" . date('Ymd_His') . ".xlsx");
+        }
+
+        // Fallback for other types or generic export (not implemented yet)
+        return response()->json(['message' => 'Export format not supported for this type'], 400);
+    }
+
+    private function exportKentokaiIssueList($problems, $fileName)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Issue List');
+
+        // =======================
+        // Styles
+        // =======================
+        $titleStyle = [
+            'font' => ['bold' => true, 'size' => 16],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+
+        $headerStyle = [
+            'font' => ['bold' => true],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F4E79']],
+            'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true],
+            'borders' => [
+                'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+            ],
+        ];
+
+        $cellBorder = [
+            'borders' => [
+                'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+            ],
+        ];
+
+        $wrapTop = [
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_TOP],
+        ];
+
+        $center = [
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+
+        // status color (opsional)
+        $statusFill = function (?string $status) {
+            if (!$status) return null;
+            $s = strtolower(trim($status));
+            return match (true) {
+                in_array($s, ['open', 'baru', 'new', 'dispatched']) => 'FF0000',
+                in_array($s, ['progress', 'on progress', 'in progress', 'process']) => 'FFC000',
+                in_array($s, ['close', 'closed', 'done', 'finish', 'selesai']) => '00B050',
+                default => '9E9E9E',
+            };
+        };
+
+        // =======================
+        // Column widths (approx)
+        // =======================
+        $sheet->getColumnDimension('A')->setWidth(5);   // NO
+        $sheet->getColumnDimension('B')->setWidth(18);  // KANBAN/ITEM
+        foreach (range('C', 'G') as $c) $sheet->getColumnDimension($c)->setWidth(4);
+        $sheet->getColumnDimension('H')->setWidth(12);  // DATE
+        $sheet->getColumnDimension('I')->setWidth(4);
+        $sheet->getColumnDimension('J')->setWidth(45);  // TEMUAN
+        foreach (range('K', 'O') as $c) $sheet->getColumnDimension($c)->setWidth(6);
+        $sheet->getColumnDimension('P')->setWidth(35);  // COUNTERMEASURE
+        foreach (range('Q', 'V') as $c) $sheet->getColumnDimension($c)->setWidth(6);
+        $sheet->getColumnDimension('W')->setWidth(20);  // KETERANGAN/IMAGE
+        foreach (range('X', 'AA') as $c) $sheet->getColumnDimension($c)->setWidth(6);
+
+        // =======================
+        // Title / Top row
+        // =======================
+        $sheet->mergeCells('A1:AA3');
+        $sheet->setCellValue('A1', 'LIST TEMUAN KENTOKAI POLY MODEL');
+        $sheet->getStyle('A1')->applyFromArray($titleStyle);
+
+        // Optional small labels (checked/prepared) like template
+        $sheet->setCellValue('T1', 'Checked');
+        $sheet->setCellValue('X1', 'Prepared');
+        $sheet->getStyle('T1')->applyFromArray(['font' => ['bold' => true]]);
+        $sheet->getStyle('X1')->applyFromArray(['font' => ['bold' => true]]);
+
+        // =======================
+        // Table Headers
+        // =======================
+        $sheet->setCellValue('A5', 'NO');
+        $sheet->mergeCells('B5:S5');
+        $sheet->setCellValue('B5', 'ITEM TEMUAN');
+        $sheet->getStyle('B5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->mergeCells('T5:V5');
+        $sheet->setCellValue('T5', 'EVALUASI');
+        $sheet->mergeCells('W5:AA5');
+        $sheet->setCellValue('W5', 'KETERANGAN');
+
+        $sheet->mergeCells('B6:G6');
+        $sheet->setCellValue('B6', 'KANBAN DAN ITEM');
+        $sheet->mergeCells('H6:I6');
+        $sheet->setCellValue('H6', 'DATE');
+        $sheet->mergeCells('J6:O6');
+        $sheet->setCellValue('J6', 'TEMUAN');
+        $sheet->mergeCells('P6:S6'); // Fix merge range P-S based on request "P-S: CONTERMEASURE"
+        $sheet->setCellValue('P6', 'CONTERMEASURE');
+
+        // Wait, user request said "P-S: CONTERMEASURE" but layout seems to use more cols?
+        // User request: "P-S: CONTERMEASURE (merge 8 row, wrap top)"
+        // But in column width logic I used P (35) and Q-V (6).
+        // Let's stick to user request P-S.
+        // Wait, T-V is EVALUASI. So P-S is indeed correct for Countermeasure.
+
+        $sheet->getStyle('A5:AA6')->applyFromArray($headerStyle);
+
+        // =======================
+        // Helper: build 1 block per issue (8 rows tall)
+        // =======================
+        $startRow = 7;
+        $blockHeight = 8; // rows 7-14, 15-22, dst.
+
+        foreach ($problems as $i => $p) {
+            $r1 = $startRow + ($i * $blockHeight);
+            $r2 = $r1 + ($blockHeight - 1);
+
+            // Merge layout (mirip template)
+            $sheet->mergeCells("A{$r1}:A{$r2}");         // NO
+            $sheet->mergeCells("B{$r1}:G{$r2}");         // KANBAN/ITEM
+            $sheet->mergeCells("H{$r1}:I{$r2}");         // DATE
+            $sheet->mergeCells("J{$r1}:O{$r2}");         // TEMUAN
+            $sheet->mergeCells("P{$r1}:S{$r2}");         // COUNTERMEASURE (P-S)
+            $sheet->mergeCells("T{$r1}:V{$r2}");         // EVALUASI (T-V)
+            $sheet->mergeCells("W{$r1}:AA{$r2}");        // KETERANGAN + IMAGE (W-AA)
+
+            // Row heights biar blok keliatan lega
+            for ($rr = $r1; $rr <= $r2; $rr++) {
+                $sheet->getRowDimension($rr)->setRowHeight(18);
+            }
+            // Biar area gambar lebih “tinggi”
+            // Adjusting middle rows to make space for image ~120
+            // 8 rows * 18 = 144px. So default is enough if image is ~120.
+            // But let's follow logic to ensure it fits well.
+
+            // Fill values
+            $sheet->setCellValue("A{$r1}", $i + 1);
+
+            // Fix KANBAN/ITEM String Issue
+            $kanbanName = $p->kanban?->kanban_name ?? '-';
+            // Check if item is an object (relation) or string
+            $itemName = '-';
+            if ($p->item) {
+                if (is_string($p->item)) {
+                    $itemName = $p->item;
+                } elseif (is_object($p->item)) {
+                    // Try common fields
+                    $itemName = $p->item->item_name ?? $p->item->name ?? $p->item->code ?? '-';
+                }
+            }
+            $sheet->setCellValue("B{$r1}", "{$kanbanName} / {$itemName}");
+
+            $sheet->setCellValue("H{$r1}", optional($p->created_at)->format('d-m-Y'));
+            $sheet->setCellValue("J{$r1}", $p->problem ?? '');
+            $sheet->setCellValue("P{$r1}", $p->curative ?? '');
+            $sheet->setCellValue("T{$r1}", strtoupper($p->status ?? ''));
+            $sheet->setCellValue("W{$r1}", $p->note ?? '');
+
+            // Styles
+            $sheet->getStyle("A{$r1}:AA{$r2}")->applyFromArray($cellBorder);
+            $sheet->getStyle("A{$r1}:I{$r2}")->applyFromArray($center);
+            $sheet->getStyle("J{$r1}:S{$r2}")->applyFromArray($wrapTop); // TEMUAN & CM wrap top
+            $sheet->getStyle("T{$r1}:V{$r2}")->applyFromArray($center);
+            $sheet->getStyle("W{$r1}:AA{$r2}")->applyFromArray($wrapTop);
+
+            // Status fill
+            $fill = $statusFill($p->status ?? null);
+            if ($fill) {
+                $sheet->getStyle("T{$r1}:V{$r2}")
+                    ->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()
+                    ->setRGB($fill);
+                $sheet->getStyle("T{$r1}:V{$r2}")
+                    ->getFont()
+                    ->setBold(true)
+                    ->getColor()
+                    ->setRGB('FFFFFF');
+            }
+
+            // Embed image into W block (kalau ada)
+            $hasImage = false;
+            $offsetX = 5;
+
+            if ($p->attachments && $p->attachments->count() > 0) {
+                foreach ($p->attachments as $att) {
+                    $imagePath = storage_path('app/public/' . ltrim($att->file_path, '/'));
+                    if (file_exists($imagePath)) {
+                        $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                        $drawing->setName('Attachment');
+                        $drawing->setDescription('Problem Attachment');
+                        $drawing->setPath($imagePath);
+                        $drawing->setCoordinates("W{$r1}");
+                        $drawing->setHeight(120);
+                        $drawing->setOffsetX($offsetX);
+                        $drawing->setOffsetY(5);
+                        $drawing->setWorksheet($sheet);
+
+                        $offsetX += 150; // Shift right
+                        $hasImage = true;
+                    }
+                }
+            }
+
+            // Fallback legacy
+            if (!$hasImage && !empty($p->attachment)) {
+                // Ensure path is correct. $p->attachment is relative to public disk, e.g. "attachments/xyz.jpg"
+                $imagePath = storage_path('app/public/' . ltrim($p->attachment, '/'));
+
+                if (file_exists($imagePath)) {
+                    $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                    $drawing->setName('Attachment');
+                    $drawing->setDescription('Problem Attachment');
+                    $drawing->setPath($imagePath);
+                    $drawing->setCoordinates("W{$r1}");
+                    $drawing->setHeight(120);
+                    $drawing->setOffsetX(5);
+                    $drawing->setOffsetY(5);
+                    $drawing->setWorksheet($sheet);
+                    $hasImage = true;
+                }
+            }
+
+            if (!$hasImage) {
+                $sheet->setCellValue("W{$r1}", "No Attachment");
+            }
+        }
+
+        // Freeze header
+        $sheet->freezePane('A7');
+
+        // Stream download
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
     public function export(int $id)
     {
+
+
         try {
-            $problem = Problem::with(['project', 'kanban', 'location', 'reporter'])->findOrFail($id);
+            $problem = Problem::with(['project', 'kanban', 'location', 'reporter', 'attachments'])->findOrFail($id);
+
+            if (strtolower($problem->type) === 'kentokai') {
+                return $this->exportKentokaiIssueList([$problem], "Kentokai_Issue_List_{$problem->id_problem}.xlsx");
+            }
 
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
@@ -243,9 +666,6 @@ class ProblemController extends Controller
             $boldTextStyle = [
                 'font' => ['bold' => true],
             ];
-
-            $lastColumn = Coordinate::stringFromColumnIndex(1);
-
 
             // --- Logo & Title Header ---
             // Assuming TMMIN logo is text for now or simple placeholder
@@ -301,19 +721,14 @@ class ProblemController extends Controller
             $sheet->setCellValue('K5', $problem->project?->project_name);
             $sheet->setCellValue('J6', 'Proses');
             $sheet->mergeCells('K6:M6');
-            // $sheet->setCellValue('K6', 'Process Name'); // Placeholder
             $sheet->mergeCells('J7:M7');
             $sheet->setCellValue('J7', 'Nama Part');
-            // $sheet->setCellValue('K7', 'Part Name'); // Placeholder
 
             $sheet->setCellValue('N5', 'No Part');
             $sheet->mergeCells('O5:R5');
-            // $sheet->setCellValue('O5', 'Part No'); // Placeholder
             $sheet->setCellValue('N6', 'Nama Proses');
             $sheet->mergeCells('O6:R6');
-            // $sheet->setCellValue('O6', 'Process Name'); // Placeholder
             $sheet->mergeCells('N7:R7');
-            // $sheet->setCellValue('O7', 'PANEL FR FENDER R/L'); // Placeholder
 
             // --- Signatures ---
             $sheet->mergeCells('S5:U5');
@@ -361,7 +776,30 @@ class ProblemController extends Controller
             $sheet->mergeCells('B12:AC28');
             $sheet->getStyle('B12')->applyFromArray($centerStyle);
 
-            if ($problem->attachment) {
+            $hasDetailImage = false;
+            $offsetX = 10;
+
+            if ($problem->attachments && $problem->attachments->count() > 0) {
+                foreach ($problem->attachments as $att) {
+                    $imagePath = storage_path('app/public/' . ltrim($att->file_path, '/'));
+                    if (file_exists($imagePath)) {
+                        $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                        $drawing->setName('Attachment');
+                        $drawing->setDescription('Problem Attachment');
+                        $drawing->setPath($imagePath);
+                        $drawing->setCoordinates('B12');
+                        $drawing->setHeight(250);
+                        $drawing->setOffsetX($offsetX);
+                        $drawing->setOffsetY(10);
+                        $drawing->setWorksheet($sheet);
+
+                        $offsetX += 300;
+                        $hasDetailImage = true;
+                    }
+                }
+            }
+
+            if (!$hasDetailImage && $problem->attachment) {
                 $imagePath = storage_path('app/public/' . $problem->attachment);
                 if (file_exists($imagePath)) {
                     $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
@@ -369,13 +807,15 @@ class ProblemController extends Controller
                     $drawing->setDescription('Problem Attachment');
                     $drawing->setPath($imagePath);
                     $drawing->setCoordinates('B12');
-                    // Optional: limit size to fit roughly in the box
-                    $drawing->setHeight(300);
+                    $drawing->setHeight(250);
+                    $drawing->setOffsetX(10);
+                    $drawing->setOffsetY(10);
                     $drawing->setWorksheet($sheet);
-                } else {
-                    $sheet->setCellValue('B12', 'Image file not found');
+                    $hasDetailImage = true;
                 }
-            } else {
+            }
+
+            if (!$hasDetailImage) {
                 $sheet->setCellValue('B12', 'No Attachment');
             }
 
@@ -422,9 +862,6 @@ class ProblemController extends Controller
             $sheet->setCellValue('AE18', 'Pass Through');
             $sheet->getStyle('AE18')->applyFromArray($blueHeaderStyle);
 
-            $passThrough = ['DF', 'PM', 'DD', 'MCH', 'CC', 'ASSY', 'DBSCA', 'TO'];
-            $row = 19;
-            $col = 31; // Column AE (index 31 in 1-based? No, A=1. AE=31)
             // Manual mapping
             $sheet->setCellValue('AE19', 'DF');
             $sheet->setCellValue('AG19', 'PM');

@@ -32,6 +32,124 @@
     var table;
     var myDropzone;
 
+    function currentProblemType() {
+        var t = $('input[name="p_type"]:checked').val();
+        return t || "";
+    }
+
+    function typeShort(type) {
+        var map = {
+            manufacturing: "MFG",
+            kentokai: "KTC",
+            ks: "KS",
+            kd: "KD",
+            sk: "SK",
+            buyoff: "BO",
+        };
+        type = (type || "").toLowerCase();
+        return map[type] || type.toUpperCase().slice(0, 3);
+    }
+
+    function normalizeForCode(name) {
+        name = (name || "").toString().trim().toUpperCase();
+        name = name.replace(/\s+/g, " ");
+        name = name.replace(/ /g, "-");
+        name = name.replace(/[^A-Z0-9\-]/g, "");
+        return name;
+    }
+
+    function buildGroupCodePrefix() {
+        var type = currentProblemType();
+        var projectText = $("#p_project option:selected").text() || "";
+        var kanbanText = $("#p_kanban option:selected").text() || "";
+        if (!type || !projectText || !kanbanText) return "";
+        var t = typeShort(type);
+        var p = normalizeForCode(projectText);
+        var k = normalizeForCode(kanbanText);
+        return t + "_" + p + "_" + k + "_";
+    }
+
+    function setTypeDisabled(disabled) {
+        $('input[name="p_type"]').prop("disabled", disabled);
+    }
+
+    function updateGroupCodePreview() {
+        var mode = $("#group_code_mode").val();
+        var selVal = $("#group_code_select").val();
+        var suffix = $("#group_code_suffix").val().trim();
+        var prefix = buildGroupCodePrefix();
+        var text = "";
+        if (mode === "existing" && selVal && selVal !== "__new__") {
+            text = selVal;
+        } else if (mode === "new") {
+            text = prefix + suffix;
+        } else if (prefix) {
+            text = prefix + "...";
+        }
+        $("#group_code_preview").text(text);
+    }
+
+    function resetGroupCodeUI() {
+        $("#group_code_select").val("");
+        $("#group_code_suffix").val("").addClass("d-none");
+        $("#group_code_mode").val("");
+        $("#group_code").val("");
+        $("#group_code_preview").text("");
+        setTypeDisabled(false);
+    }
+
+    function reloadProblemCodeOptions() {
+        var type = currentProblemType();
+        var projectId = $("#p_project").val();
+        var kanbanId = $("#p_kanban").val();
+        var $sel = $("#group_code_select");
+        if (!$sel.length) {
+            return;
+        }
+        if (!type || !projectId || !kanbanId) {
+            $sel.empty();
+            $sel.append('<option value="">Select existing code</option>');
+            $sel.append('<option value="__new__">+ New Code</option>');
+            updateGroupCodePreview();
+            return;
+        }
+        var url =
+            "/api/problem-codes?type=" +
+            encodeURIComponent(type) +
+            "&id_project=" +
+            encodeURIComponent(projectId) +
+            "&id_kanban=" +
+            encodeURIComponent(kanbanId);
+        $sel.prop("disabled", true);
+        $.getJSON(url)
+            .done(function (data) {
+                console.log("problem-codes params", {
+                    type: type,
+                    id_project: projectId,
+                    id_kanban: kanbanId,
+                });
+                console.log("problem-codes response", data);
+                $sel.empty();
+                $sel.append('<option value="">Select existing code</option>');
+                (data || []).forEach(function (row) {
+                    if (row.code) {
+                        $sel.append(
+                            '<option value="' +
+                                row.code +
+                                '">' +
+                                row.code +
+                                "</option>"
+                        );
+                    }
+                });
+                $sel.append('<option value="__new__">+ New Code</option>');
+            })
+            .always(function () {
+                $sel.prop("disabled", false);
+                updateGroupCodePreview();
+            });
+    }
+
     // Disable auto discover for all elements:
     if (typeof Dropzone !== 'undefined') {
         Dropzone.autoDiscover = false;
@@ -109,8 +227,13 @@
         $("#p_kanban")
             .empty()
             .append('<option value="">Select kanban</option>');
-        // Explicitly reset select to manufacturing
-        $('input[name="p_type"][value="manufacturing"]').prop("checked", true);
+
+        var activeType =
+            $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
+        $('input[name="p_type"][value="' + activeType + '"]').prop(
+            "checked",
+            true
+        );
 
         // Reset UI to Select Mode
         $("#p_project").removeClass("d-none").val("");
@@ -126,6 +249,9 @@
         $("#p_item_select").removeClass("d-none").val("");
         $("#new_item_name").addClass("d-none").val("");
         $("#toggleItemMode").html('<i class="bi bi-plus-lg"></i> New');
+
+        resetGroupCodeUI();
+        reloadProblemCodeOptions();
 
         var modal = new bootstrap.Modal(
             document.getElementById("problemModal")
@@ -175,9 +301,25 @@
             });
         }
 
-        // Handle tab click
         $(".nav-tabs .nav-link").on("shown.bs.tab", function (e) {
             initTable();
+        });
+
+        // Export List Handler
+        $("#btnExportList").on("click", function () {
+            var activeType = $(".nav-tabs .nav-link.active").data("type") || "";
+            // Optionally check if type is empty or specific logic
+            if (!activeType) {
+                 if (window.Swal) Swal.fire("Error", "No active type selected", "error");
+                 else alert("No active type selected");
+                 return;
+            }
+            
+            var url = "/problems/export-list?type=" + encodeURIComponent(activeType);
+            // Optionally add status if you have a filter for it
+            // url += "&status=" + encodeURIComponent(activeStatus);
+
+            window.location.href = url;
         });
 
         $("#btnProblemAdd")
@@ -193,7 +335,10 @@
                 $("#p_kanban")
                     .empty()
                     .append('<option value="">Select kanban</option>');
-                if (!pid) return;
+                if (!pid) {
+                    reloadProblemCodeOptions();
+                    return;
+                }
                 ajax({
                     url: "/kanbans/list",
                     method: "GET",
@@ -208,6 +353,7 @@
                                 "</option>"
                         );
                     });
+                    reloadProblemCodeOptions();
                 });
             });
 
@@ -233,21 +379,28 @@
             }
         });
 
-        // Toggle Kanban Mode
         $(document).on("click", "#toggleKanbanMode", function () {
             var isSelect = !$("#p_kanban").hasClass("d-none");
             if (isSelect) {
                 $("#p_kanban").addClass("d-none");
                 $("#new_kanban_name").removeClass("d-none").focus();
                 $(this).html('<i class="bi bi-x-lg"></i> Cancel');
+                $("#group_code_select").empty();
+                $("#group_code_select").append(
+                    '<option value="">Select existing code</option>'
+                );
+                $("#group_code_select").append(
+                    '<option value="__new__">+ New Code</option>'
+                );
+                resetGroupCodeUI();
             } else {
                 $("#p_kanban").removeClass("d-none");
                 $("#new_kanban_name").addClass("d-none").val("");
                 $(this).html('<i class="bi bi-plus-lg"></i> New');
+                reloadProblemCodeOptions();
             }
         });
 
-        // Toggle Item Mode
         $(document).on("click", "#toggleItemMode", function () {
             var isSelect = !$("#p_item_select").hasClass("d-none");
             if (isSelect) {
@@ -260,6 +413,50 @@
                 $(this).html('<i class="bi bi-plus-lg"></i> New');
             }
         });
+
+        $(document).on("change", 'input[name="p_type"]', function () {
+            reloadProblemCodeOptions();
+        });
+
+        $(document)
+            .on("change", "#group_code_select", function () {
+                var val = $(this).val();
+                if (val === "__new__") {
+                    $("#group_code_mode").val("new");
+                    $("#group_code_suffix").removeClass("d-none").val("").focus();
+                    $("#group_code").val("");
+                    setTypeDisabled(false);
+                } else if (val) {
+                    $("#group_code_mode").val("existing");
+                    $("#group_code_suffix").addClass("d-none").val("");
+                    $("#group_code").val(val);
+                    setTypeDisabled(true);
+                } else {
+                    $("#group_code_mode").val("");
+                    $("#group_code_suffix").addClass("d-none").val("");
+                    $("#group_code").val("");
+                    setTypeDisabled(false);
+                }
+                updateGroupCodePreview();
+            })
+            .on("input", "#group_code_suffix", function () {
+                var suffix = $(this).val().trim();
+                if (suffix.length > 0) {
+                    $("#group_code_mode").val("new");
+                    var prefix = buildGroupCodePrefix();
+                    $("#group_code").val(prefix + suffix);
+                    setTypeDisabled(true);
+                } else {
+                    $("#group_code_mode").val("");
+                    $("#group_code").val("");
+                    setTypeDisabled(false);
+                }
+                updateGroupCodePreview();
+            })
+            .on("click", "#group_code_clear", function () {
+                resetGroupCodeUI();
+                reloadProblemCodeOptions();
+            });
 
         $("#saveProblem")
             .off("click")
@@ -278,7 +475,7 @@
                 var locationId = $("#p_location").val();
                 var type = $('input[name="p_type"]:checked').val();
                 if (!type) {
-                    type = "manufacturing"; // Fallback if undefined
+                    type = "manufacturing";
                 }
                 var problem = $("#p_problem").val().trim();
                 var cause = $("#p_cause").val().trim();
@@ -397,6 +594,60 @@
                         title: "Curative action is required",
                     });
                     return;
+                }
+
+                var groupMode = $("#group_code_mode").val();
+                var groupSelectVal = $("#group_code_select").val();
+                var groupSuffix = $("#group_code_suffix").val().trim();
+                var fullCode = $("#group_code").val().trim();
+
+                if (!groupMode) {
+                    if (window.Swal)
+                        Swal.fire({
+                            icon: "error",
+                            title: "Problem Code is required",
+                        });
+                    else alert("Problem Code is required");
+                    return;
+                }
+
+                if (groupMode === "existing") {
+                    if (!groupSelectVal || groupSelectVal === "__new__") {
+                        if (window.Swal)
+                            Swal.fire({
+                                icon: "error",
+                                title: "Please select existing Problem Code",
+                            });
+                        else alert("Please select existing Problem Code");
+                        return;
+                    }
+                    if (!fullCode) {
+                        fullCode = groupSelectVal;
+                        $("#group_code").val(fullCode);
+                    }
+                    formData.append("group_code_mode", "existing");
+                    formData.append("group_code_existing", groupSelectVal);
+                } else if (groupMode === "new") {
+                    if (!groupSuffix) {
+                        if (window.Swal)
+                            Swal.fire({
+                                icon: "error",
+                                title: "Please input suffix for new Problem Code",
+                            });
+                        else alert("Please input suffix for new Problem Code");
+                        return;
+                    }
+                    if (!fullCode) {
+                        var prefix = buildGroupCodePrefix();
+                        fullCode = prefix + groupSuffix;
+                        $("#group_code").val(fullCode);
+                    }
+                    formData.append("group_code_mode", "new");
+                    formData.append("group_code_suffix", groupSuffix);
+                }
+
+                if (fullCode) {
+                    formData.append("group_code", fullCode);
                 }
 
                 formData.append("id_location", locationId);
@@ -528,12 +779,37 @@
 
             if (!row) return;
 
-            // Populate details fields (unchanged)
-            $("#d_project").val(row.project || "");
-            $("#d_kanban").val(row.kanban || "");
-            $("#d_item").val(row.item || "-");
-            $("#d_location").val(row.location || "-");
-            $("#d_type").val(row.type || "-");
+            // Populate details fields
+            $("#d_project").val(row.id_project || "");
+            
+            // Kanban population
+            var $kanbanSelect = $("#d_kanban");
+            $kanbanSelect.empty().append('<option value="">Select kanban</option>');
+            if (row.id_project) {
+                // Pre-add current kanban to avoid delay
+                if (row.id_kanban) {
+                     $kanbanSelect.append(`<option value="${row.id_kanban}" selected>${row.kanban}</option>`);
+                }
+                // Fetch full list
+                ajax({
+                    url: "/kanbans/list",
+                    method: "GET",
+                    data: { project_id: row.id_project },
+                }).done(function (items) {
+                    // Clear again to avoid duplicates if we just appended current
+                    $kanbanSelect.empty().append('<option value="">Select kanban</option>');
+                    items.forEach(function (k) {
+                        var selected = k.id_kanban == row.id_kanban ? "selected" : "";
+                        $kanbanSelect.append(
+                            `<option value="${k.id_kanban}" ${selected}>${k.kanban_name}</option>`
+                        );
+                    });
+                });
+            }
+
+            $("#d_item").val(row.id_item || "");
+            $("#d_location").val(row.id_location || "");
+            $("#d_type").val(row.raw_type || "manufacturing");
             $("#d_status").val(row.status || "-");
             $("#d_reporter").val(row.reporter || "-");
             $("#d_created_at").val(
@@ -541,9 +817,14 @@
                     ? new Date(row.created_at).toLocaleDateString()
                     : "-"
             );
-            $("#d_problem").val(row.problem || "-");
-            $("#d_cause").val(row.cause || "-");
-            $("#d_curative").val(row.curative || "-");
+            $("#d_problem").val(row.problem || "");
+            $("#d_cause").val(row.cause || "");
+            $("#d_curative").val(row.curative || "");
+
+            // Reset UI state
+            $("#btn-save-problem").data("id", id).addClass("d-none");
+            $("#btn-edit-problem").removeClass("d-none");
+            $("#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative").prop("disabled", true);
 
             // Generate carousel for attachments
             var attachments = [];
@@ -780,6 +1061,71 @@
                     }
                 });
             }
+        });
+
+        // Edit Feature Handlers
+        $("#d_project").on("change", function () {
+            var pid = $(this).val();
+            $("#d_kanban").empty().append('<option value="">Select kanban</option>');
+            if (!pid) return;
+            ajax({
+                url: "/kanbans/list",
+                method: "GET",
+                data: { project_id: pid },
+            }).done(function (items) {
+                items.forEach(function (k) {
+                    $("#d_kanban").append(
+                        `<option value="${k.id_kanban}">${k.kanban_name}</option>`
+                    );
+                });
+            });
+        });
+
+        $("#btn-edit-problem").on("click", function () {
+            $(this).addClass("d-none");
+            $("#btn-save-problem").removeClass("d-none");
+            $("#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative").prop("disabled", false);
+        });
+
+        $("#btn-save-problem").on("click", function () {
+            var id = $(this).data("id");
+            var data = {
+                id_project: $("#d_project").val(),
+                id_kanban: $("#d_kanban").val(),
+                id_item: $("#d_item").val(),
+                id_location: $("#d_location").val(),
+                type: $("#d_type").val(),
+                problem: $("#d_problem").val(),
+                cause: $("#d_cause").val(),
+                curative: $("#d_curative").val(),
+            };
+            
+            // Basic validation
+            if (!data.problem || !data.cause || !data.curative) {
+                 if (window.Swal) Swal.fire("Error", "Please fill all required fields", "error");
+                 else alert("Please fill all required fields");
+                 return;
+            }
+
+            var $btn = $(this);
+            $btn.prop("disabled", true);
+
+            ajax({
+                url: "/problems/" + id,
+                method: "PUT",
+                data: data,
+            }).done(function () {
+                if (window.Swal) Swal.fire({ icon: "success", title: "Success", text: "Problem updated", timer: 1500, showConfirmButton: false });
+                
+                // Disable fields and reset buttons
+                $("#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative").prop("disabled", true);
+                $("#btn-save-problem").addClass("d-none");
+                $("#btn-edit-problem").removeClass("d-none");
+                
+                if (table) table.ajax.reload(null, false);
+            }).always(function () {
+                $btn.prop("disabled", false);
+            });
         });
 
         window.loadProblems = initTable;
