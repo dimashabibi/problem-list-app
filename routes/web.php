@@ -75,6 +75,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/problems/list', [ProblemController::class, 'list'])->name('problems.list');
     Route::post('/problems/store', [ProblemController::class, 'store'])->name('problems.store');
     Route::put('/problems/{id}', [ProblemController::class, 'update'])->name('problems.update');
+    Route::get('/problems/export-group', [ProblemController::class, 'exportGroup'])->name('problems.export_group');
     Route::get('/problems/export-list', [ProblemController::class, 'exportList'])->name('problems.export_list');
     Route::get('/problems/{id}/export', [ProblemController::class, 'export'])->name('problems.export');
     Route::post('/update-status/{id}', [ProblemController::class, 'updateStatus']);

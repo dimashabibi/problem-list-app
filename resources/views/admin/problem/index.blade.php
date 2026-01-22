@@ -113,6 +113,7 @@
 
                 @include('admin.problem.modaladd')
                 @include('admin.problem.modaldetail')
+                @include('admin.problem.modalexport')
             </div>
 
             @include('layouts.footer')

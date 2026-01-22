@@ -305,21 +305,92 @@
             initTable();
         });
 
-        // Export List Handler
-        $("#btnExportList").on("click", function () {
-            var activeType = $(".nav-tabs .nav-link.active").data("type") || "";
-            // Optionally check if type is empty or specific logic
-            if (!activeType) {
-                 if (window.Swal) Swal.fire("Error", "No active type selected", "error");
-                 else alert("No active type selected");
-                 return;
-            }
+        // Export List Handler (Opens Modal)
+        $("#btnExportList").off("click").on("click", function () {
+            var activeType = $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
             
-            var url = "/problems/export-list?type=" + encodeURIComponent(activeType);
-            // Optionally add status if you have a filter for it
-            // url += "&status=" + encodeURIComponent(activeStatus);
+            // Set the type in the modal
+            $("#exp_type").val(activeType);
+            
+            // Reset other fields
+            $("#exp_project").val("");
+            $("#exp_kanban").html('<option value="">All Kanbans</option>');
+            $("#exp_group_code").html('<option value="">Select Group Code</option>');
+            
+            // Show the modal
+            var exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
+            exportModal.show();
+        });
 
+        // Export Modal: Project Change
+        $("#exp_project").off("change").on("change", function() {
+            var projectId = $(this).val();
+            var $kanban = $("#exp_kanban");
+            
+            $kanban.html('<option value="">All Kanbans</option>');
+            $("#exp_group_code").html('<option value="">Select Group Code</option>');
+            
+            if (projectId) {
+                // We can reuse the kanban list endpoint or similar
+                ajax({
+                    url: "/kanbans/list",
+                    method: "GET",
+                    data: { project_id: projectId },
+                }).done(function (items) {
+                    items.forEach(function (k) {
+                        $kanban.append(
+                            '<option value="' + k.id_kanban + '">' + k.kanban_name + "</option>"
+                        );
+                    });
+                });
+            }
+        });
+
+        // Export Modal: Kanban Change -> Load Group Codes
+        $("#exp_kanban").off("change").on("change", function() {
+            var type = $("#exp_type").val();
+            var projectId = $("#exp_project").val();
+            var kanbanId = $(this).val();
+            var $groupCode = $("#exp_group_code");
+            
+            $groupCode.html('<option value="">Select Group Code</option>');
+            
+            // If user selects "All Kanbans" (empty val), we might still want to clear group code
+            // Only fetch group codes if specific filters are selected? 
+            // The API requires type, id_project, id_kanban usually for precise filtering
+            if (type && projectId && kanbanId) {
+                var url = "/api/problem-codes?type=" + encodeURIComponent(type) +
+                          "&id_project=" + encodeURIComponent(projectId) +
+                          "&id_kanban=" + encodeURIComponent(kanbanId);
+                          
+                $.getJSON(url).done(function(data) {
+                    (data || []).forEach(function(row) {
+                        if (row.code) {
+                            $groupCode.append('<option value="' + row.code + '">' + row.code + '</option>');
+                        }
+                    });
+                });
+            }
+        });
+
+        // Export Modal: Do Export
+        $("#btnDoExport").off("click").on("click", function() {
+            var type = $("#exp_type").val();
+            var projectId = $("#exp_project").val();
+            var kanbanId = $("#exp_kanban").val();
+            var groupCode = $("#exp_group_code").val();
+            
+            var url = "/problems/export-group?type=" + encodeURIComponent(type);
+            if (projectId) url += "&id_project=" + encodeURIComponent(projectId);
+            if (kanbanId) url += "&id_kanban=" + encodeURIComponent(kanbanId);
+            if (groupCode) url += "&group_code=" + encodeURIComponent(groupCode);
+            
             window.location.href = url;
+            
+            // Close modal
+            var modalEl = document.getElementById('exportModal');
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
         });
 
         $("#btnProblemAdd")
