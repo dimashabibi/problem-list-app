@@ -393,7 +393,7 @@
         var columnChartKdData = @json($columnChartKd);
         var columnChartKsData = @json($columnChartKs);
     </script>
-    <script src="{{ asset('assets/js/pages/dashboard.js') }}"></script>
+    <script src="{{ asset('assets/js/pages/dashboard.js') }}?v={{ time() + 1 }}"></script>
 </body>
 
 </html>

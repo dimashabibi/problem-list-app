@@ -178,19 +178,21 @@ class ThemeLayout {
                });
           }
 
-          var menuToggleBtn = document.querySelector('.button-toggle-menu');
+          var menuToggleBtn = document.querySelectorAll('.button-toggle-menu');
           if (menuToggleBtn) {
-               menuToggleBtn.addEventListener('click', function () {
-                    var configSize = self.config.menu.size;
-                    var size = self.html.classList.contains(configSize);
+               menuToggleBtn.forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                         var configSize = self.config.menu.size;
+                         var size = self.html.classList.contains(configSize);
 
-                    if (window.innerWidth > 1040) {
-                         self.html.classList.toggle("sidebar-hover");
-                    } else {
-                         self.html.classList.toggle('sidebar-enable');
-                         self.showBackdrop();
-                    }
+                         if (window.innerWidth > 1040) {
+                              self.html.classList.toggle("sidebar-hover");
+                         } else {
+                              self.html.classList.toggle('sidebar-enable');
+                              self.showBackdrop();
+                         }
 
+                    });
                });
           }
      }

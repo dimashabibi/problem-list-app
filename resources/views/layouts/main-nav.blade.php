@@ -12,11 +12,6 @@
                 <img src="{{ asset('assets/images/logo-white.png') }}" class="logo-lg" alt="logo light">
             </a>
         </div>
-        <!-- Menu Toggle Button -->
-        <button type="button" class="btn btn-link d-flex button-sm-hover button-toggle-menu"
-            aria-label="Show Full Sidebar">
-            <i data-lucide="menu" class="button-sm-hover-icon"></i>
-        </button>
     </div>
 
     <div class="h-100" data-simplebar>

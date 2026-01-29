@@ -59,31 +59,36 @@ document.addEventListener("DOMContentLoaded", function () {
                 height: 350,
                 type: "bar",
                 toolbar: {
-                    show: false,
+                    show: true,
                 },
             },
             plotOptions: {
                 bar: {
                     horizontal: false,
                     columnWidth: "45%",
-                    endingShape: "rounded",
+                    borderRadius: 10,
+                    borderRadiusApplication: "end",
                     dataLabels: {
                         position: "top", // top, center, bottom
                     },
                 },
             },
+            grid: {
+                padding: {
+                    top: 50,
+                },
+            },
             dataLabels: {
                 enabled: true,
-                offsetY: -20,
+                formatter: function (e) {
+                    return e;
+                },
+                position: "top",
+                offsetY: -30,
                 style: {
                     fontSize: "12px",
                     colors: ["#304758"],
                 },
-            },
-            stroke: {
-                show: true,
-                width: 2,
-                colors: ["transparent"],
             },
             series: [
                 {
@@ -135,15 +140,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 bar: {
                     horizontal: false,
                     columnWidth: "45%",
-                    endingShape: "rounded",
+                    borderRadius: 10,
+                    borderRadiusApplication: "end",
                     dataLabels: {
                         position: "top", // top, center, bottom
                     },
                 },
             },
+            grid: {
+                padding: {
+                    top: 50,
+                },
+            },
             dataLabels: {
                 enabled: true,
-                offsetY: -20,
+                offsetY: -25,
                 style: {
                     fontSize: "12px",
                     colors: ["#304758"],
@@ -204,15 +215,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 bar: {
                     horizontal: false,
                     columnWidth: "45%",
-                    endingShape: "rounded",
+                    borderRadius: 10,
+                    borderRadiusApplication: "end",
                     dataLabels: {
                         position: "top", // top, center, bottom
                     },
                 },
             },
+            grid: {
+                padding: {
+                    top: 50,
+                },
+            },
             dataLabels: {
                 enabled: true,
-                offsetY: -20,
+                offsetY: -25,
                 style: {
                     fontSize: "12px",
                     colors: ["#304758"],
@@ -273,15 +290,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 bar: {
                     horizontal: false,
                     columnWidth: "45%",
-                    endingShape: "rounded",
+                    borderRadius: 10,
+                    borderRadiusApplication: "end",
                     dataLabels: {
                         position: "top", // top, center, bottom
                     },
                 },
             },
+            grid: {
+                padding: {
+                    top: 50,
+                },
+            },
             dataLabels: {
                 enabled: true,
-                offsetY: -20,
+                offsetY: -25,
                 style: {
                     fontSize: "12px",
                     colors: ["#304758"],

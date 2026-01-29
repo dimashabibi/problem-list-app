@@ -32,21 +32,31 @@ class DashboardController extends Controller
 
         $thisWeekProblems = [
 
-            'pie'     => Problem::whereBetween('created_at', [$startDate, $endDate])->where('problems.type', 'manufacturing')->count(),
+            'pie'     => Problem::when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
+                return $q->whereBetween('created_at', [$startDate, $endDate]);
+            })->where('problems.type', 'manufacturing')->count(),
             'column1' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
-                ->whereBetween('created_at', [$startDate, $endDate])
+                ->when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
+                    return $q->whereBetween('created_at', [$startDate, $endDate]);
+                })
                 ->where('type', 'manufacturing')
                 ->first()->closed,
             'sk' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
-                ->whereBetween('created_at', [$startDate, $endDate])
+                ->when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
+                    return $q->whereBetween('created_at', [$startDate, $endDate]);
+                })
                 ->where('type', 'sk')
                 ->first()->closed,
             'ks' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
-                ->whereBetween('created_at', [$startDate, $endDate])
+                ->when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
+                    return $q->whereBetween('created_at', [$startDate, $endDate]);
+                })
                 ->where('type', 'ks')
                 ->first()->closed,
             'kd' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
-                ->whereBetween('created_at', [$startDate, $endDate])
+                ->when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
+                    return $q->whereBetween('created_at', [$startDate, $endDate]);
+                })
                 ->where('type', 'kd')
                 ->first()->closed,
         ];

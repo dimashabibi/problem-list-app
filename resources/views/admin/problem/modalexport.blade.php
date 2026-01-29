@@ -9,7 +9,7 @@
                 <form id="exportForm">
                     <div class="mb-3">
                         <label class="form-label">Type</label>
-                        <select class="form-control" id="exp_type" disabled>
+                        <select class="form-control" id="exp_type">
                             <option value="manufacturing">Manufacturing</option>
                             <option value="kentokai">Kentokai</option>
                             <option value="ks">KS</option>

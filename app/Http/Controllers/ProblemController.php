@@ -263,11 +263,12 @@ class ProblemController extends Controller
             'id_item' => $itemId,
             'id_location' => $request->input('id_location'),
             'type' => $request->input('type'),
+            'status' => $request->input('status'),
             'problem' => $request->input('problem'),
             'cause' => $request->input('cause'),
             'curative' => $request->input('curative'),
             'attachment' => $mainAttachmentPath,
-            'status' => 'dispatched',
+            'status' => 'in_progress',
             'id_user' => Auth::id() ?? 1,
             'group_code' => $groupCode,
             'group_code_norm' => $groupCodeNorm,
@@ -295,6 +296,7 @@ class ProblemController extends Controller
             'id_item' => 'required|integer|exists:items,id_item',
             'id_location' => 'required|integer|exists:locations,id_location',
             'type' => 'required|in:manufacturing,ks,kd,sk,kentokai,buyoff',
+            'status' => 'required|in:dispatched,in_progress,closed',
             'problem' => 'required|string',
             'cause' => 'nullable|string',
             'curative' => 'nullable|string',
@@ -302,16 +304,25 @@ class ProblemController extends Controller
 
         $validated = $request->validate($rules);
 
-        $problem->update([
+        $updateData = [
             'id_project' => $request->input('id_project'),
             'id_kanban' => $request->input('id_kanban'),
             'id_item' => $request->input('id_item'),
             'id_location' => $request->input('id_location'),
             'type' => $request->input('type'),
+            'status' => $request->input('status'),
             'problem' => $request->input('problem'),
             'cause' => $request->input('cause'),
             'curative' => $request->input('curative'),
-        ]);
+        ];
+
+        if ($request->filled('group_code')) {
+            $groupCode = $request->input('group_code');
+            $updateData['group_code'] = $groupCode;
+            $updateData['group_code_norm'] = strtoupper($groupCode);
+        }
+
+        $problem->update($updateData);
 
         return response()->json(['success' => true]);
     }
@@ -501,7 +512,7 @@ class ProblemController extends Controller
         $sheet->setCellValue('B6', $problem->kanban?->kanban_name);
         $sheet->getStyle('B6')->applyFromArray($centerStyle);
         $sheet->mergeCells('E6:I7');
-        $sheet->setCellValue('E6', $problem->item);
+        $sheet->setCellValue('E6', $problem->item?->item_name);
         $sheet->getStyle('E6')->applyFromArray($centerStyle);
 
         // Project Info Table

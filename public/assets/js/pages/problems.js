@@ -24,13 +24,14 @@
                         }
                     },
                 },
-                opts
-            )
+                opts,
+            ),
         );
     }
 
     var table;
     var myDropzone;
+    var expProjectChoices, expKanbanChoices, expGroupCodeChoices;
 
     function currentProblemType() {
         var t = $('input[name="p_type"]:checked').val();
@@ -62,6 +63,17 @@
         var type = currentProblemType();
         var projectText = $("#p_project option:selected").text() || "";
         var kanbanText = $("#p_kanban option:selected").text() || "";
+        if (!type || !projectText || !kanbanText) return "";
+        var t = typeShort(type);
+        var p = normalizeForCode(projectText);
+        var k = normalizeForCode(kanbanText);
+        return t + "_" + p + "_" + k + "_";
+    }
+
+    function buildModalGroupCodePrefix() {
+        var type = $("#d_type").val();
+        var projectText = $("#d_project option:selected").text() || "";
+        var kanbanText = $("#d_kanban option:selected").text() || "";
         if (!type || !projectText || !kanbanText) return "";
         var t = typeShort(type);
         var p = normalizeForCode(projectText);
@@ -138,7 +150,7 @@
                                 row.code +
                                 '">' +
                                 row.code +
-                                "</option>"
+                                "</option>",
                         );
                     }
                 });
@@ -151,7 +163,7 @@
     }
 
     // Disable auto discover for all elements:
-    if (typeof Dropzone !== 'undefined') {
+    if (typeof Dropzone !== "undefined") {
         Dropzone.autoDiscover = false;
     }
 
@@ -162,16 +174,51 @@
             $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
         var url = "/problems/list?type=" + encodeURIComponent(activeType);
 
+        // Logic: Manufacturing -> Use DataTables Excel Button (In Table)
+        // Others -> Hide DataTables Excel Button
+        var isMfg = activeType === "manufacturing";
+        $("#btnExportList").show(); // Always show the main Export button
+
         if ($.fn.DataTable.isDataTable("#table-problem")) {
             var dt = $("#table-problem").DataTable();
             dt.ajax.url(url).load();
+            
+            // Toggle DataTables Buttons
+            if (dt.buttons) {
+                if (isMfg) {
+                    dt.buttons().container().show();
+                } else {
+                    dt.buttons().container().hide();
+                }
+            }
             return;
         }
 
         table = $("#table-problem").DataTable({
+            dom: "Bfrtip",
+            buttons: [
+                {
+                    extend: "excelHtml5",
+                    text: '<i class="bi bi-file-earmark-excel"></i> Excel',
+                    className: "btn btn-success btn-sm mb-3",
+                    exportOptions: {
+                        columns: ":not(:last-child)", // Exclude actions column
+                    },
+                },
+            ],
             ajax: {
                 url: url,
                 dataSrc: "",
+            },
+            initComplete: function () {
+                var dt = this.api();
+                if (dt.buttons) {
+                    if (isMfg) {
+                        dt.buttons().container().show();
+                    } else {
+                        dt.buttons().container().hide();
+                    }
+                }
             },
             columns: [
                 {
@@ -198,9 +245,9 @@
                     render: function (data, type, row) {
                         let updateButton = "";
 
-                        if (row.status === "dispatched") {
-                            updateButton = `<button class="btn btn-sm btn-outline-primary btn-update-status" data-id="${data}" data-status="in_progress">In Progress</button>`;
-                        } else if (row.status === "in_progress") {
+                        if (row.status === "in_progress") {
+                            updateButton = `<button class="btn btn-sm btn-outline-primary btn-update-status" data-id="${data}" data-status="dispatched">Dispatched</button>`;
+                        } else if (row.status === "dispatched") {
                             updateButton = `<button class="btn btn-sm btn-outline-primary btn-update-status" data-id="${data}" data-status="closed">Closed</button>`;
                         }
 
@@ -212,7 +259,10 @@
                     },
                 },
             ],
-            responsive: true,
+            scrollX: true,
+            scrollY: "60vh",
+            scrollCollapse: true,
+            // responsive: true,
             drawCallback: function () {
                 lucide.createIcons();
             },
@@ -232,7 +282,7 @@
             $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
         $('input[name="p_type"][value="' + activeType + '"]').prop(
             "checked",
-            true
+            true,
         );
 
         // Reset UI to Select Mode
@@ -254,16 +304,42 @@
         reloadProblemCodeOptions();
 
         var modal = new bootstrap.Modal(
-            document.getElementById("problemModal")
+            document.getElementById("problemModal"),
         );
         modal.show();
     }
 
     $(document).ready(function () {
         initTable();
-        
+
+        // Init Choices for Export Modal
+        if (typeof Choices !== "undefined") {
+            var choicesOpts = {
+                searchEnabled: true,
+                itemSelectText: "",
+                shouldSort: false,
+                placeholder: true,
+                placeholderValue: "Select Option",
+            };
+            if (document.getElementById("exp_project")) {
+                expProjectChoices = new Choices("#exp_project", choicesOpts);
+            }
+            if (document.getElementById("exp_kanban")) {
+                expKanbanChoices = new Choices("#exp_kanban", choicesOpts);
+            }
+            if (document.getElementById("exp_group_code")) {
+                expGroupCodeChoices = new Choices(
+                    "#exp_group_code",
+                    choicesOpts,
+                );
+            }
+        }
+
         // Initialize Dropzone
-        if (document.getElementById("problem-dropzone") && typeof Dropzone !== 'undefined') {
+        if (
+            document.getElementById("problem-dropzone") &&
+            typeof Dropzone !== "undefined"
+        ) {
             // Template for the file preview
             var previewTemplate = `
                 <div class="card mt-1 mb-0 shadow-none border">
@@ -306,92 +382,283 @@
         });
 
         // Export List Handler (Opens Modal)
-        $("#btnExportList").off("click").on("click", function () {
-            var activeType = $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
-            
-            // Set the type in the modal
-            $("#exp_type").val(activeType);
-            
-            // Reset other fields
-            $("#exp_project").val("");
-            $("#exp_kanban").html('<option value="">All Kanbans</option>');
-            $("#exp_group_code").html('<option value="">Select Group Code</option>');
-            
-            // Show the modal
-            var exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
-            exportModal.show();
+        $("#btnExportList")
+            .off("click")
+            .on("click", function () {
+                var activeType =
+                    $(".nav-tabs .nav-link.active").data("type") ||
+                    "manufacturing";
+
+                // Set the type in the modal
+                $("#exp_type").val(activeType);
+
+                // Reset other fields
+                if (expProjectChoices) expProjectChoices.setChoiceByValue("");
+                else $("#exp_project").val("");
+
+                if (expKanbanChoices) {
+                    expKanbanChoices.clearChoices();
+                    expKanbanChoices.setChoices(
+                        [
+                            {
+                                value: "",
+                                label: "All Kanbans",
+                                selected: true,
+                                hidden: true,
+                            },
+                        ],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#exp_kanban").html(
+                        '<option value="">All Kanbans</option>',
+                    );
+                }
+
+                if (expGroupCodeChoices) {
+                    expGroupCodeChoices.clearChoices();
+                    expGroupCodeChoices.setChoices(
+                        [
+                            {
+                                value: "",
+                                label: "Select Group Code",
+                                selected: true,
+                            },
+                        ],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#exp_group_code").html(
+                        '<option value="">Select Group Code</option>',
+                    );
+                }
+
+                // Show the modal
+                var exportModal = new bootstrap.Modal(
+                    document.getElementById("exportModal"),
+                );
+                exportModal.show();
+            });
+
+        // Export Modal: Type Change
+        $("#exp_type").on("change", function () {
+            if (expProjectChoices) expProjectChoices.setChoiceByValue("");
+            else $("#exp_project").val("");
+
+            if (expKanbanChoices) {
+                expKanbanChoices.clearChoices();
+                expKanbanChoices.setChoices(
+                    [{ value: "", label: "All Kanbans", selected: true }],
+                    "value",
+                    "label",
+                    true,
+                );
+            } else {
+                $("#exp_kanban").html('<option value="">All Kanbans</option>');
+            }
+
+            if (expGroupCodeChoices) {
+                expGroupCodeChoices.clearChoices();
+                expGroupCodeChoices.setChoices(
+                    [{ value: "", label: "Select Group Code", selected: true }],
+                    "value",
+                    "label",
+                    true,
+                );
+            } else {
+                $("#exp_group_code").html(
+                    '<option value="">Select Group Code</option>',
+                );
+            }
         });
 
         // Export Modal: Project Change
-        $("#exp_project").off("change").on("change", function() {
-            var projectId = $(this).val();
-            var $kanban = $("#exp_kanban");
-            
-            $kanban.html('<option value="">All Kanbans</option>');
-            $("#exp_group_code").html('<option value="">Select Group Code</option>');
-            
-            if (projectId) {
-                // We can reuse the kanban list endpoint or similar
-                ajax({
-                    url: "/kanbans/list",
-                    method: "GET",
-                    data: { project_id: projectId },
-                }).done(function (items) {
-                    items.forEach(function (k) {
-                        $kanban.append(
-                            '<option value="' + k.id_kanban + '">' + k.kanban_name + "</option>"
-                        );
-                    });
-                });
-            }
-        });
+        $("#exp_project")
+            .off("change")
+            .on("change", function () {
+                var projectId = $(this).val();
 
-        // Export Modal: Kanban Change -> Load Group Codes
-        $("#exp_kanban").off("change").on("change", function() {
-            var type = $("#exp_type").val();
-            var projectId = $("#exp_project").val();
-            var kanbanId = $(this).val();
-            var $groupCode = $("#exp_group_code");
-            
-            $groupCode.html('<option value="">Select Group Code</option>');
-            
-            // If user selects "All Kanbans" (empty val), we might still want to clear group code
-            // Only fetch group codes if specific filters are selected? 
-            // The API requires type, id_project, id_kanban usually for precise filtering
-            if (type && projectId && kanbanId) {
-                var url = "/api/problem-codes?type=" + encodeURIComponent(type) +
-                          "&id_project=" + encodeURIComponent(projectId) +
-                          "&id_kanban=" + encodeURIComponent(kanbanId);
-                          
-                $.getJSON(url).done(function(data) {
-                    (data || []).forEach(function(row) {
-                        if (row.code) {
-                            $groupCode.append('<option value="' + row.code + '">' + row.code + '</option>');
+                if (expKanbanChoices) {
+                    expKanbanChoices.clearChoices();
+                    expKanbanChoices.setChoices(
+                        [{ value: "", label: "All Kanbans", selected: true }],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#exp_kanban").html(
+                        '<option value="">All Kanbans</option>',
+                    );
+                }
+
+                if (expGroupCodeChoices) {
+                    expGroupCodeChoices.clearChoices();
+                    expGroupCodeChoices.setChoices(
+                        [
+                            {
+                                value: "",
+                                label: "Select Group Code",
+                                selected: true,
+                            },
+                        ],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#exp_group_code").html(
+                        '<option value="">Select Group Code</option>',
+                    );
+                }
+
+                if (projectId) {
+                    ajax({
+                        url: "/kanbans/list",
+                        method: "GET",
+                        data: { project_id: projectId },
+                    }).done(function (items) {
+                        if (expKanbanChoices) {
+                            var choices = [
+                                {
+                                    value: "",
+                                    label: "All Kanbans",
+                                    selected: true,
+                                },
+                            ];
+                            items.forEach(function (k) {
+                                choices.push({
+                                    value: k.id_kanban,
+                                    label: k.kanban_name,
+                                });
+                            });
+                            expKanbanChoices.setChoices(
+                                choices,
+                                "value",
+                                "label",
+                                true,
+                            );
+                        } else {
+                            items.forEach(function (k) {
+                                $("#exp_kanban").append(
+                                    '<option value="' +
+                                        k.id_kanban +
+                                        '">' +
+                                        k.kanban_name +
+                                        "</option>",
+                                );
+                            });
                         }
                     });
-                });
-            }
-        });
+                }
+            });
+
+        // Export Modal: Kanban Change -> Load Group Codes
+        $("#exp_kanban")
+            .off("change")
+            .on("change", function () {
+                var type = $("#exp_type").val();
+                var projectId = $("#exp_project").val();
+                var kanbanId = $(this).val();
+
+                if (expGroupCodeChoices) {
+                    expGroupCodeChoices.clearChoices();
+                    expGroupCodeChoices.setChoices(
+                        [
+                            {
+                                value: "",
+                                label: "Select Group Code",
+                                selected: true,
+                            },
+                        ],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#exp_group_code").html(
+                        '<option value="">Select Group Code</option>',
+                    );
+                }
+
+                if (type && projectId && kanbanId) {
+                    var url =
+                        "/api/problem-codes?type=" +
+                        encodeURIComponent(type) +
+                        "&id_project=" +
+                        encodeURIComponent(projectId) +
+                        "&id_kanban=" +
+                        encodeURIComponent(kanbanId);
+
+                    $.getJSON(url).done(function (data) {
+                        if (expGroupCodeChoices) {
+                            var choices = [
+                                {
+                                    value: "",
+                                    label: "Select Group Code",
+                                    selected: true,
+                                },
+                            ];
+                            (data || []).forEach(function (row) {
+                                if (row.code) {
+                                    choices.push({
+                                        value: row.code,
+                                        label: row.code,
+                                    });
+                                }
+                            });
+                            expGroupCodeChoices.setChoices(
+                                choices,
+                                "value",
+                                "label",
+                                true,
+                            );
+                        } else {
+                            (data || []).forEach(function (row) {
+                                if (row.code) {
+                                    $("#exp_group_code").append(
+                                        '<option value="' +
+                                            row.code +
+                                            '">' +
+                                            row.code +
+                                            "</option>",
+                                    );
+                                }
+                            });
+                        }
+                    });
+                }
+            });
 
         // Export Modal: Do Export
-        $("#btnDoExport").off("click").on("click", function() {
-            var type = $("#exp_type").val();
-            var projectId = $("#exp_project").val();
-            var kanbanId = $("#exp_kanban").val();
-            var groupCode = $("#exp_group_code").val();
-            
-            var url = "/problems/export-group?type=" + encodeURIComponent(type);
-            if (projectId) url += "&id_project=" + encodeURIComponent(projectId);
-            if (kanbanId) url += "&id_kanban=" + encodeURIComponent(kanbanId);
-            if (groupCode) url += "&group_code=" + encodeURIComponent(groupCode);
-            
-            window.location.href = url;
-            
-            // Close modal
-            var modalEl = document.getElementById('exportModal');
-            var modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
-        });
+        $("#btnDoExport")
+            .off("click")
+            .on("click", function () {
+                var type = $("#exp_type").val();
+                var projectId = $("#exp_project").val();
+                var kanbanId = $("#exp_kanban").val();
+                var groupCode = $("#exp_group_code").val();
+
+                var url =
+                    "/problems/export-group?type=" + encodeURIComponent(type);
+                if (projectId)
+                    url += "&id_project=" + encodeURIComponent(projectId);
+                if (kanbanId)
+                    url += "&id_kanban=" + encodeURIComponent(kanbanId);
+                if (groupCode)
+                    url += "&group_code=" + encodeURIComponent(groupCode);
+
+                window.location.href = url;
+
+                // Close modal
+                var modalEl = document.getElementById("exportModal");
+                var modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            });
 
         $("#btnProblemAdd")
             .off("click")
@@ -421,7 +688,7 @@
                                 k.id_kanban +
                                 '">' +
                                 k.kanban_name +
-                                "</option>"
+                                "</option>",
                         );
                     });
                     reloadProblemCodeOptions();
@@ -458,10 +725,10 @@
                 $(this).html('<i class="bi bi-x-lg"></i> Cancel');
                 $("#group_code_select").empty();
                 $("#group_code_select").append(
-                    '<option value="">Select existing code</option>'
+                    '<option value="">Select existing code</option>',
                 );
                 $("#group_code_select").append(
-                    '<option value="__new__">+ New Code</option>'
+                    '<option value="__new__">+ New Code</option>',
                 );
                 resetGroupCodeUI();
             } else {
@@ -494,7 +761,10 @@
                 var val = $(this).val();
                 if (val === "__new__") {
                     $("#group_code_mode").val("new");
-                    $("#group_code_suffix").removeClass("d-none").val("").focus();
+                    $("#group_code_suffix")
+                        .removeClass("d-none")
+                        .val("")
+                        .focus();
                     $("#group_code").val("");
                     setTypeDisabled(false);
                 } else if (val) {
@@ -781,7 +1051,7 @@
                         $("#p_project").removeClass("d-none");
                         $("#new_project_name").addClass("d-none").val("");
                         $("#toggleProjectMode").html(
-                            '<i class="bi bi-plus-lg"></i> New'
+                            '<i class="bi bi-plus-lg"></i> New',
                         );
 
                         $("#p_kanban").removeClass("d-none");
@@ -820,7 +1090,7 @@
                                         showConfirmButton: false,
                                     });
                                 if (table) table.ajax.reload();
-                            }
+                            },
                         );
                     }
                 });
@@ -829,7 +1099,7 @@
                     ajax({ url: "/problems/" + id, method: "DELETE" }).done(
                         function () {
                             if (table) table.ajax.reload();
-                        }
+                        },
                     );
                 }
             }
@@ -852,14 +1122,18 @@
 
             // Populate details fields
             $("#d_project").val(row.id_project || "");
-            
+
             // Kanban population
             var $kanbanSelect = $("#d_kanban");
-            $kanbanSelect.empty().append('<option value="">Select kanban</option>');
+            $kanbanSelect
+                .empty()
+                .append('<option value="">Select kanban</option>');
             if (row.id_project) {
                 // Pre-add current kanban to avoid delay
                 if (row.id_kanban) {
-                     $kanbanSelect.append(`<option value="${row.id_kanban}" selected>${row.kanban}</option>`);
+                    $kanbanSelect.append(
+                        `<option value="${row.id_kanban}" selected>${row.kanban}</option>`,
+                    );
                 }
                 // Fetch full list
                 ajax({
@@ -868,11 +1142,14 @@
                     data: { project_id: row.id_project },
                 }).done(function (items) {
                     // Clear again to avoid duplicates if we just appended current
-                    $kanbanSelect.empty().append('<option value="">Select kanban</option>');
+                    $kanbanSelect
+                        .empty()
+                        .append('<option value="">Select kanban</option>');
                     items.forEach(function (k) {
-                        var selected = k.id_kanban == row.id_kanban ? "selected" : "";
+                        var selected =
+                            k.id_kanban == row.id_kanban ? "selected" : "";
                         $kanbanSelect.append(
-                            `<option value="${k.id_kanban}" ${selected}>${k.kanban_name}</option>`
+                            `<option value="${k.id_kanban}" ${selected}>${k.kanban_name}</option>`,
                         );
                     });
                 });
@@ -881,21 +1158,30 @@
             $("#d_item").val(row.id_item || "");
             $("#d_location").val(row.id_location || "");
             $("#d_type").val(row.raw_type || "manufacturing");
-            $("#d_status").val(row.status || "-");
+            $("#d_status").val(row.status || "in_progress");
             $("#d_reporter").val(row.reporter || "-");
             $("#d_created_at").val(
                 row.created_at
                     ? new Date(row.created_at).toLocaleDateString()
-                    : "-"
+                    : "-",
             );
             $("#d_problem").val(row.problem || "");
             $("#d_cause").val(row.cause || "");
             $("#d_curative").val(row.curative || "");
 
+            // Group Code
+            $("#d_group_code").val(row.group_code || "");
+            $("#d_group_code_container").removeClass("d-none");
+            $("#d_group_code_edit_container").addClass("d-none");
+            $("#d_gc_suffix").val("");
+            $("#d_gc_prefix").text("");
+
             // Reset UI state
             $("#btn-save-problem").data("id", id).addClass("d-none");
             $("#btn-edit-problem").removeClass("d-none");
-            $("#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative").prop("disabled", true);
+            $(
+                "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_status",
+            ).prop("disabled", true);
 
             // Generate carousel for attachments
             var attachments = [];
@@ -931,8 +1217,8 @@
                 <div class="carousel-item ${activeClass}">
                     <a href="/storage/${path}" target="_blank" class="d-block">
                         <img src="/storage/${path}" class="d-block w-100 rounded shadow-sm" alt="Attachment ${
-                        index + 1
-                    }" style="max-height: 300px; object-fit: cover; transition: transform 0.2s;">
+                            index + 1
+                        }" style="max-height: 300px; object-fit: cover; transition: transform 0.2s;">
                     </a>
                 </div>
             `;
@@ -964,7 +1250,7 @@
 
             // Show modal
             var modal = new bootstrap.Modal(
-                document.getElementById("problemDetailModal")
+                document.getElementById("problemDetailModal"),
             );
             modal.show();
         });
@@ -976,7 +1262,7 @@
             var btn = $(this);
             var originalText = btn.html();
             btn.prop("disabled", true).html(
-                '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...'
+                '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...',
             );
 
             fetch("/problems/" + id + "/export", {
@@ -995,7 +1281,7 @@
                             // Try to get filename from header
                             var filename = "problem_" + id + ".xlsx";
                             var disposition = response.headers.get(
-                                "Content-Disposition"
+                                "Content-Disposition",
                             );
                             if (
                                 disposition &&
@@ -1021,13 +1307,13 @@
                             .json()
                             .then((data) => {
                                 throw new Error(
-                                    data.message || "Error exporting Excel"
+                                    data.message || "Error exporting Excel",
                                 );
                             })
                             .catch((err) => {
                                 // If json parse fails, use status text
                                 throw new Error(
-                                    "Export failed: " + response.statusText
+                                    "Export failed: " + response.statusText,
                                 );
                             });
                     }
@@ -1079,7 +1365,7 @@
                     confirm(
                         "Are you sure you want to update status to " +
                             statusLabel +
-                            "?"
+                            "?",
                     )
                 ) {
                     performUpdate();
@@ -1095,17 +1381,17 @@
                     },
                 }).done(function (response) {
                     if (response.success) {
-                        if (currentStatus === "in_progress") {
+                        if (currentStatus === "dispatched") {
                             $btn.text("Update to Closed").data(
                                 "status",
-                                "closed"
+                                "closed",
                             );
                         } else if (currentStatus === "closed") {
                             $btn.remove();
-                        } else if (currentStatus === "dispatched") {
-                            $btn.text("Update to In Progress").data(
+                        } else if (currentStatus === "in_progress") {
+                            $btn.text("Update to Dispatched").data(
                                 "status",
-                                "in_progress"
+                                "dispatched",
                             );
                         }
                         if (table) table.ajax.reload(null, false);
@@ -1137,7 +1423,9 @@
         // Edit Feature Handlers
         $("#d_project").on("change", function () {
             var pid = $(this).val();
-            $("#d_kanban").empty().append('<option value="">Select kanban</option>');
+            $("#d_kanban")
+                .empty()
+                .append('<option value="">Select kanban</option>');
             if (!pid) return;
             ajax({
                 url: "/kanbans/list",
@@ -1146,16 +1434,41 @@
             }).done(function (items) {
                 items.forEach(function (k) {
                     $("#d_kanban").append(
-                        `<option value="${k.id_kanban}">${k.kanban_name}</option>`
+                        `<option value="${k.id_kanban}">${k.kanban_name}</option>`,
                     );
                 });
+                // Update prefix if in edit mode
+                if (!$("#d_group_code_edit_container").hasClass("d-none")) {
+                    $("#d_gc_prefix").text(buildModalGroupCodePrefix());
+                }
             });
+        });
+
+        $("#d_kanban, #d_type").on("change", function () {
+            if (!$("#d_group_code_edit_container").hasClass("d-none")) {
+                $("#d_gc_prefix").text(buildModalGroupCodePrefix());
+            }
         });
 
         $("#btn-edit-problem").on("click", function () {
             $(this).addClass("d-none");
             $("#btn-save-problem").removeClass("d-none");
-            $("#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative").prop("disabled", false);
+            $(
+                "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_status",
+            ).prop("disabled", false);
+
+            var existingCode = $("#d_group_code").val();
+            if (!existingCode) {
+                // If code is empty, switch to edit mode
+                $("#d_group_code_container").addClass("d-none");
+                $("#d_group_code_edit_container").removeClass("d-none");
+                var prefix = buildModalGroupCodePrefix();
+                $("#d_gc_prefix").text(prefix);
+                $("#d_gc_suffix").focus();
+            } else {
+                // If code exists, keep it visible but maybe disabled (read-only)
+                // Assuming we don't edit existing codes
+            }
         });
 
         $("#btn-save-problem").on("click", function () {
@@ -1166,16 +1479,32 @@
                 id_item: $("#d_item").val(),
                 id_location: $("#d_location").val(),
                 type: $("#d_type").val(),
+                status: $("#d_status").val(),
                 problem: $("#d_problem").val(),
                 cause: $("#d_cause").val(),
                 curative: $("#d_curative").val(),
             };
-            
+
+            // Check if we are updating group code
+            if (!$("#d_group_code_edit_container").hasClass("d-none")) {
+                var prefix = $("#d_gc_prefix").text();
+                var suffix = $("#d_gc_suffix").val().trim();
+                if (suffix) {
+                    data.group_code = prefix + suffix;
+                    data.group_code_suffix = suffix; // Optional, maybe for backend logic
+                }
+            }
+
             // Basic validation
             if (!data.problem || !data.cause || !data.curative) {
-                 if (window.Swal) Swal.fire("Error", "Please fill all required fields", "error");
-                 else alert("Please fill all required fields");
-                 return;
+                if (window.Swal)
+                    Swal.fire(
+                        "Error",
+                        "Please fill all required fields",
+                        "error",
+                    );
+                else alert("Please fill all required fields");
+                return;
             }
 
             var $btn = $(this);
@@ -1185,18 +1514,35 @@
                 url: "/problems/" + id,
                 method: "PUT",
                 data: data,
-            }).done(function () {
-                if (window.Swal) Swal.fire({ icon: "success", title: "Success", text: "Problem updated", timer: 1500, showConfirmButton: false });
-                
-                // Disable fields and reset buttons
-                $("#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative").prop("disabled", true);
-                $("#btn-save-problem").addClass("d-none");
-                $("#btn-edit-problem").removeClass("d-none");
-                
-                if (table) table.ajax.reload(null, false);
-            }).always(function () {
-                $btn.prop("disabled", false);
-            });
+            })
+                .done(function () {
+                    if (window.Swal)
+                        Swal.fire({
+                            icon: "success",
+                            title: "Success",
+                            text: "Problem updated",
+                            timer: 1500,
+                            showConfirmButton: false,
+                        });
+
+                    // Disable fields and reset buttons
+                    $(
+                        "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_status",
+                    ).prop("disabled", true);
+                    $("#d_group_code").val(
+                        data.group_code || $("#d_group_code").val(),
+                    ); // Update if changed
+                    $("#d_group_code_container").removeClass("d-none");
+                    $("#d_group_code_edit_container").addClass("d-none");
+
+                    $("#btn-save-problem").addClass("d-none");
+                    $("#btn-edit-problem").removeClass("d-none");
+
+                    if (table) table.ajax.reload(null, false);
+                })
+                .always(function () {
+                    $btn.prop("disabled", false);
+                });
         });
 
         window.loadProblems = initTable;

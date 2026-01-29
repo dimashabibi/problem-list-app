@@ -3,14 +3,12 @@
         <div class="navbar-header">
 
             <div class="d-flex align-items-center gap-2">
-                <!-- App Search-->
-                <form class="app-search d-none d-md-block me-auto">
-                    <div class="position-relative">
-                        <input type="search" class="form-control" placeholder="Start typing..." autocomplete="off"
-                            value="">
-                        <i data-lucide="search" class="search-widget-icon"></i>
-                    </div>
-                </form>
+                <!-- Menu Toggle Button -->
+                <div class="topbar-item">
+                    <button type="button" class="topbar-button fs-24 button-toggle-menu">
+                        <i data-lucide="menu"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="d-flex align-items-center gap-2 ms-auto">

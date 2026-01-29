@@ -12,17 +12,20 @@
             border: 1px solid #e9ebec;
             box-shadow: none;
         }
+
         #dropzone-preview .card-body {
             padding: 0.5rem 1rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
+
         #dropzone-preview .file-details {
             display: flex;
             align-items: center;
             flex-grow: 1;
         }
+
         #dropzone-preview .dz-image {
             width: 40px;
             height: 40px;
@@ -32,19 +35,23 @@
             flex-shrink: 0;
             background: #eee;
         }
+
         #dropzone-preview .dz-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
+
         #dropzone-preview .file-info h6 {
             margin: 0;
             font-size: 0.9rem;
             font-weight: 600;
         }
+
         #dropzone-preview .file-info small {
             color: #6c757d;
         }
+
         #dropzone-preview .dz-remove {
             margin-left: 10px;
         }
@@ -67,7 +74,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Problems</h5>
                         <div>
-                            <button id="btnExportList" class="btn btn-success me-2">Export List</button>
+                            <button id="btnExportList" class="btn btn-success me-2">Export Problem</button>
                             <button id="btnProblemAdd" class="btn btn-primary">Add Problem</button>
                         </div>
                     </div>

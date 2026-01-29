@@ -36,7 +36,7 @@
     <!-- END Wrapper -->
 
     @include('layouts.vendor-scripts')
-    <script src="{{ asset('assets/js/pages/dashboard.js') }}"></script>
+    <script src="{{ asset('assets/js/pages/dashboard.js') }}?v={{ time() + 1 }}"></script>
 
 </body>
 

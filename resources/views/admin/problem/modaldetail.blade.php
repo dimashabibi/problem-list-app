@@ -57,6 +57,17 @@
 
                                     <!-- Row 3 -->
                                     <div class="col-md-6">
+                                        <label for="d_group_code" class="form-label">Group Code</label>
+                                        <div id="d_group_code_container">
+                                            <input type="text" id="d_group_code" class="form-control" disabled>
+                                        </div>
+                                        <div id="d_group_code_edit_container" class="input-group d-none">
+                                            <span class="input-group-text" id="d_gc_prefix"></span>
+                                            <input type="text" id="d_gc_suffix" class="form-control"
+                                                placeholder="Suffix">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
                                         <label for="d_type" class="form-label">Type</label>
                                         <select id="d_type" class="form-control" disabled>
                                             <option value="manufacturing">Manufacturing</option>
@@ -69,7 +80,11 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label for="d_status" class="form-label">Status</label>
-                                        <input type="text" id="d_status" class="form-control" disabled>
+                                        <select id="d_status" class="form-control" disabled>
+                                            <option value="in_progress">In Progress</option>
+                                            <option value="dispatched">Dispatched</option>
+                                            <option value="closed">Closed</option>
+                                        </select>
                                     </div>
 
                                     <!-- Row 4 -->
