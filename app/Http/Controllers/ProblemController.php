@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Problem;
+use App\Models\ManufacturingProblem;
+use App\Models\ManufacturingProblemAttachment;
 use App\Models\Project;
 use App\Models\Kanban;
 use Illuminate\Http\Request;
@@ -30,15 +32,9 @@ class ProblemController extends Controller
 
     public function list(Request $request)
     {
-        $q = Problem::query()
-            ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
-            ->orderBy('id_problem', 'desc');
-        if ($request->filled('item_id')) $q->where('id_item', $request->integer('item_id'));
-        if ($request->filled('project_id')) $q->where('id_project', $request->integer('project_id'));
-        if ($request->filled('kanban_id')) $q->where('id_kanban', $request->integer('kanban_id'));
-        if ($request->filled('type')) $q->where('type', $request->string('type'));
+        $type = $request->query('type');
 
-        return response()->json($q->get()->map(function ($p) {
+        $format = function ($p) {
             return [
                 'id_problem' => $p->id_problem,
                 'created_at' => $p->created_at,
@@ -48,21 +44,53 @@ class ProblemController extends Controller
                 'id_item' => $p->id_item,
                 'id_location' => $p->id_location,
                 'kanban' => $p->kanban?->kanban_name,
-                'item' => $p->item?->item_name ?? $p->item, // Fallback to raw value if relation fails
+                'item' => $p->item?->item_name ?? $p->item,
                 'location' => $p->location?->location_name,
                 'type' => $p->type === 'manufacturing' ? 'Manufacturing' : strtoupper($p->type),
                 'raw_type' => $p->type,
-                'group_code' => $p->group_code,
-                'group_code_norm' => $p->group_code_norm,
+                'group_code' => $p->group_code ?? null,
+                'group_code_norm' => $p->group_code_norm ?? null,
                 'problem' => $p->problem,
                 'cause' => $p->cause,
                 'curative' => $p->curative,
                 'attachment' => $p->attachment,
                 'attachments' => $p->attachments->map(fn($a) => $a->file_path)->toArray(),
-                'status' => $p->status ?? 'dispatched', // Fallback for existing null records
+                'status' => $p->status ?? 'dispatched',
                 'reporter' => $p->reporter?->fullname ?? $p->reporter?->username,
             ];
-        }));
+        };
+
+        $results = collect();
+
+        // Manufacturing Problems
+        if (!$type || $type === 'manufacturing') {
+            $q = ManufacturingProblem::query()
+                ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
+                ->orderBy('id_problem', 'desc');
+
+            if ($request->filled('item_id')) $q->where('id_item', $request->integer('item_id'));
+            if ($request->filled('project_id')) $q->where('id_project', $request->integer('project_id'));
+            if ($request->filled('kanban_id')) $q->where('id_kanban', $request->integer('kanban_id'));
+            
+
+            $results = $results->merge($q->get()->map($format));
+        }
+
+        // Other Problems
+        if (!$type || $type !== 'manufacturing') {
+            $q = Problem::query()
+                ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
+                ->orderBy('id_problem', 'desc');
+
+            if ($request->filled('item_id')) $q->where('id_item', $request->integer('item_id'));
+            if ($request->filled('project_id')) $q->where('id_project', $request->integer('project_id'));
+            if ($request->filled('kanban_id')) $q->where('id_kanban', $request->integer('kanban_id'));
+            if ($request->filled('type')) $q->where('type', $request->string('type'));
+
+            $results = $results->merge($q->get()->map($format));
+        }
+
+        return response()->json($results->sortByDesc('created_at')->values());
     }
 
     public function problemCodes(Request $request)
@@ -139,6 +167,9 @@ class ProblemController extends Controller
 
     public function store(Request $request)
     {
+        $type = $request->input('type');
+        $isManufacturing = ($type === 'manufacturing');
+
         $rules = [
             'id_location' => 'required|integer|exists:locations,id_location',
             'type' => 'required|in:manufacturing,ks,kd,sk,kentokai,buyoff',
@@ -147,11 +178,14 @@ class ProblemController extends Controller
             'curative' => 'nullable|string',
             'attachment' => 'nullable|array',
             'attachment.*' => 'image|max:4096',
-            'group_code' => 'required|string|max:100',
-            'group_code_mode' => 'required|in:existing,new',
-            'group_code_existing' => 'nullable|string|max:100|required_if:group_code_mode,existing',
-            'group_code_suffix' => 'nullable|string|max:100|required_if:group_code_mode,new',
         ];
+
+        if (!$isManufacturing) {
+            $rules['group_code'] = 'required|string|max:100';
+            $rules['group_code_mode'] = 'required|in:existing,new';
+            $rules['group_code_existing'] = 'nullable|string|max:100|required_if:group_code_mode,existing';
+            $rules['group_code_suffix'] = 'nullable|string|max:100|required_if:group_code_mode,new';
+        }
 
         // Conditional validation
         if ($request->filled('new_project_name')) {
@@ -216,71 +250,77 @@ class ProblemController extends Controller
             }
         }
 
-        $groupCode = null;
-        $groupCodeNorm = null;
-        $mode = $request->input('group_code_mode');
-        $explicitGroupCode = trim((string) $request->input('group_code', ''));
-        $type = $request->input('type');
-        $project = null;
-        $kanban = null;
-
-        if ($type && $projectId) {
-            $project = Project::find($projectId);
-        }
-        if ($type && $kanbanId) {
-            $kanban = Kanban::find($kanbanId);
-        }
-
-        if ($explicitGroupCode !== '') {
-            $groupCode = $explicitGroupCode;
-            $groupCodeNorm = strtoupper($groupCode);
-        } else {
-            if ($mode === 'existing') {
-                $code = trim((string) $request->input('group_code_existing', ''));
-                if ($code !== '') {
-                    $groupCode = $code;
-                    $groupCodeNorm = strtoupper($code);
-                }
-            } elseif ($mode === 'new') {
-                $suffix = trim((string) $request->input('group_code_suffix', ''));
-
-                if ($suffix !== '' && $project && $kanban) {
-                    $typeShort = $this->typeShort($type);
-                    $projectPart = $this->normalizeForCode($project->project_name ?? '');
-                    $kanbanPart = $this->normalizeForCode($kanban->kanban_name ?? '');
-
-                    $prefix = $typeShort . '_' . $projectPart . '_' . $kanbanPart . '_';
-
-                    $groupCode = trim($prefix . $suffix);
-                    $groupCodeNorm = strtoupper($groupCode);
-                }
-            }
-        }
-
-        $problemData = array_merge($validated, [
+        $commonData = [
             'id_project' => $projectId,
             'id_kanban' => $kanbanId,
             'id_item' => $itemId,
             'id_location' => $request->input('id_location'),
-            'type' => $request->input('type'),
-            'status' => $request->input('status'),
+            'type' => $type,
+            'status' => 'in_progress',
             'problem' => $request->input('problem'),
             'cause' => $request->input('cause'),
             'curative' => $request->input('curative'),
             'attachment' => $mainAttachmentPath,
-            'status' => 'in_progress',
             'id_user' => Auth::id() ?? 1,
-            'group_code' => $groupCode,
-            'group_code_norm' => $groupCodeNorm,
-        ]);
+        ];
 
-        $problem = Problem::create($problemData);
+        if ($isManufacturing) {
+            $problem = ManufacturingProblem::create($commonData);
 
-        foreach ($attachmentPaths as $path) {
-            \App\Models\ProblemAttachment::create([
-                'problem_id' => $problem->id_problem,
-                'file_path' => $path
+            foreach ($attachmentPaths as $path) {
+                ManufacturingProblemAttachment::create([
+                    'problem_id' => $problem->id_problem,
+                    'file_path' => $path
+                ]);
+            }
+        } else {
+            $groupCode = null;
+            $groupCodeNorm = null;
+            $mode = $request->input('group_code_mode');
+            $explicitGroupCode = trim((string) $request->input('group_code', ''));
+            
+            $project = Project::find($projectId);
+            $kanban = Kanban::find($kanbanId);
+
+            if ($explicitGroupCode !== '') {
+                $groupCode = $explicitGroupCode;
+                $groupCodeNorm = strtoupper($groupCode);
+            } else {
+                if ($mode === 'existing') {
+                    $code = trim((string) $request->input('group_code_existing', ''));
+                    if ($code !== '') {
+                        $groupCode = $code;
+                        $groupCodeNorm = strtoupper($code);
+                    }
+                } elseif ($mode === 'new') {
+                    $suffix = trim((string) $request->input('group_code_suffix', ''));
+
+                    if ($suffix !== '' && $project && $kanban) {
+                        $typeShort = $this->typeShort($type);
+                        $projectPart = $this->normalizeForCode($project->project_name ?? '');
+                        $kanbanPart = $this->normalizeForCode($kanban->kanban_name ?? '');
+
+                        $prefix = $typeShort . '_' . $projectPart . '_' . $kanbanPart . '_';
+
+                        $groupCode = trim($prefix . $suffix);
+                        $groupCodeNorm = strtoupper($groupCode);
+                    }
+                }
+            }
+
+            $problemData = array_merge($commonData, [
+                'group_code' => $groupCode,
+                'group_code_norm' => $groupCodeNorm,
             ]);
+
+            $problem = Problem::create($problemData);
+
+            foreach ($attachmentPaths as $path) {
+                \App\Models\ProblemAttachment::create([
+                    'problem_id' => $problem->id_problem,
+                    'file_path' => $path
+                ]);
+            }
         }
 
         return response()->json(['success' => true]);
@@ -288,7 +328,13 @@ class ProblemController extends Controller
 
     public function update(Request $request, int $id)
     {
-        $problem = Problem::findOrFail($id);
+        $type = $request->input('type');
+
+        if ($type === 'manufacturing') {
+             $problem = ManufacturingProblem::findOrFail($id);
+        } else {
+             $problem = Problem::findOrFail($id);
+        }
 
         $rules = [
             'id_project' => 'required|integer|exists:projects,id_project',
@@ -316,7 +362,7 @@ class ProblemController extends Controller
             'curative' => $request->input('curative'),
         ];
 
-        if ($request->filled('group_code')) {
+        if ($type !== 'manufacturing' && $request->filled('group_code')) {
             $groupCode = $request->input('group_code');
             $updateData['group_code'] = $groupCode;
             $updateData['group_code_norm'] = strtoupper($groupCode);
@@ -327,12 +373,17 @@ class ProblemController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
-        $p = Problem::with('attachments')->findOrFail($id);
+        $type = $request->query('type');
+        
+        if ($type === 'manufacturing') {
+             $p = ManufacturingProblem::with('attachments')->findOrFail($id);
+        } else {
+             $p = Problem::with('attachments')->findOrFail($id);
+        }
 
-        // Delete main attachment if exists (though it should be in attachments table too if created new)
-        // But for old records, we check attachment column
+        // Delete main attachment if exists
         if ($p->attachment) {
             try {
                 Storage::disk('public')->delete($p->attachment);
@@ -343,8 +394,6 @@ class ProblemController extends Controller
         // Delete all related attachments
         foreach ($p->attachments as $attachment) {
             try {
-                // Check if it is different from main attachment to avoid double delete attempt? 
-                // Storage delete doesn't throw if file missing usually, or we catch it.
                 if ($attachment->file_path !== $p->attachment) {
                     Storage::disk('public')->delete($attachment->file_path);
                 }
@@ -352,7 +401,7 @@ class ProblemController extends Controller
             }
         }
 
-        $p->delete(); // Cascade deletes attachment records from DB
+        $p->delete();
         return response()->json(['success' => true]);
     }
 
@@ -363,8 +412,13 @@ class ProblemController extends Controller
             'status' => 'required|in:dispatched,in_progress,closed'
         ]);
 
-        // Menemukan problem berdasarkan ID
-        $problem = Problem::findOrFail($id);
+        $type = $request->input('type');
+
+        if ($type === 'manufacturing') {
+             $problem = ManufacturingProblem::findOrFail($id);
+        } else {
+             $problem = Problem::findOrFail($id);
+        }
 
         // Mengubah status sesuai dengan request
         $problem->status = $request->status;
@@ -372,6 +426,87 @@ class ProblemController extends Controller
 
         // Mengembalikan response sukses
         return response()->json(['success' => true]);
+    }
+
+    public function exportTable(Request $request)
+    {
+        try {
+            $type = $request->query('type');
+            
+            if ($type === 'manufacturing') {
+                $query = ManufacturingProblem::with(['project', 'kanban', 'location', 'item', 'reporter']);
+            } else {
+                $query = Problem::with(['project', 'kanban', 'location', 'item', 'reporter']);
+                if ($type) {
+                    $query->where('type', $type);
+                }
+            }
+
+            // Apply filters if any
+            if ($request->filled('item_id')) $query->where('id_item', $request->integer('item_id'));
+            if ($request->filled('project_id')) $query->where('id_project', $request->integer('project_id'));
+            if ($request->filled('kanban_id')) $query->where('id_kanban', $request->integer('kanban_id'));
+
+            $problems = $query->orderBy('created_at', 'desc')->get();
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Problem List');
+
+            // Headers
+            $headers = ['No', 'Date', 'Project', 'Kanban', 'Item', 'Location', 'Problem', 'Status', 'Reporter'];
+            if ($type !== 'manufacturing') {
+                $headers[] = 'Group Code';
+            }
+            
+            $col = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($col . '1', $header);
+                $sheet->getStyle($col . '1')->getFont()->setBold(true);
+                $col++;
+            }
+
+            $row = 2;
+            $no = 1;
+            foreach ($problems as $p) {
+                $sheet->setCellValue('A' . $row, $no++);
+                $sheet->setCellValue('B' . $row, $p->created_at->format('Y-m-d'));
+                $sheet->setCellValue('C' . $row, $p->project?->project_name);
+                $sheet->setCellValue('D' . $row, $p->kanban?->kanban_name);
+                $sheet->setCellValue('E' . $row, $p->item?->item_name ?? $p->item);
+                $sheet->setCellValue('F' . $row, $p->location?->location_name);
+                $sheet->setCellValue('G' . $row, $p->problem);
+                $sheet->setCellValue('H' . $row, $p->status);
+                $sheet->setCellValue('I' . $row, $p->reporter?->fullname ?? $p->reporter?->username);
+                
+                if ($type !== 'manufacturing') {
+                     $sheet->setCellValue('J' . $row, $p->group_code);
+                }
+                
+                $row++;
+            }
+
+            // Auto size columns (A to last column)
+            // Note: $col is now the column AFTER the last one (e.g. J if headers end at I)
+            // We should loop until the character BEFORE $col
+            $lastCol = $col; 
+            // Decrement char logic or just use range and verify
+            // simple way: 'A' to 'Z', check index
+            // range('A', $col) includes the last one, so if $col is 'J', it includes 'J'.
+            // But we only wrote up to 'I'. So 'J' is empty.
+            // It's fine to autosize empty column, but cleaner to stop before.
+            foreach (range('A', $col) as $columnID) {
+                if ($columnID === $col) continue; 
+                $sheet->getColumnDimension($columnID)->setAutoSize(true);
+            }
+
+            $fileName = "Problem_List_" . ($type ?? 'All') . "_" . date('Ymd_His') . ".xlsx";
+
+            return $this->downloadSpreadsheet($spreadsheet, $fileName);
+        } catch (\Throwable $e) {
+            Log::error('Export Table Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to export table', 'message' => $e->getMessage()], 500);
+        }
     }
 
 
@@ -428,6 +563,32 @@ class ProblemController extends Controller
         };
     }
 
+    public function export(Request $request, int $id)
+    {
+        $problem = Problem::find($id);
+        if (!$problem) {
+             $problem = ManufacturingProblem::findOrFail($id);
+             $type = 'manufacturing';
+        } else {
+             $type = $problem->type;
+        }
+
+        $fileName = "Problem_{$type}_{$id}_" . date('Ymd_His') . ".xlsx";
+        
+        // Wrap in collection for compatibility with existing format methods
+        $problems = collect([$problem]);
+
+        return match (strtolower($type)) {
+            'manufacturing' => $this->exportFormatManufacturing($problems, $fileName),
+            'kentokai' => $this->exportFormatKentokai($problems, $fileName),
+            'ks' => $this->exportFormatKs($problems, $fileName),
+            'kd' => $this->exportFormatKd($problems, $fileName),
+            'sk' => $this->exportFormatSk($problems, $fileName),
+            'buyoff' => $this->exportFormatBuyoff($problems, $fileName),
+            default => response()->json(['message' => "Export format for type '$type' not supported"], 400),
+        };
+    }
+
     private function downloadSpreadsheet($spreadsheet, $fileName)
     {
         return response()->streamDownload(function () use ($spreadsheet) {
@@ -465,7 +626,11 @@ class ProblemController extends Controller
             'font' => ['bold' => true],
         ];
 
-        foreach ($problems as $problem);
+        foreach ($problems as $problem) {
+            // Loop wrapper to ensure $problem is set
+            // Ideally this format should only handle one problem or create multiple sheets
+            break; // Process only the first one for now as the template is single-page
+        }
 
         // --- Logo & Title Header ---
         // Assuming TMMIN logo is text for now or simple placeholder

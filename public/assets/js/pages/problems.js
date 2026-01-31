@@ -112,6 +112,15 @@
 
     function reloadProblemCodeOptions() {
         var type = currentProblemType();
+
+        // Toggle visibility of Problem Code section
+        var $codeContainer = $("#group_code_select").closest(".col-md-12");
+        if (type === "manufacturing") {
+            $codeContainer.addClass("d-none");
+        } else {
+            $codeContainer.removeClass("d-none");
+        }
+
         var projectId = $("#p_project").val();
         var kanbanId = $("#p_kanban").val();
         var $sel = $("#group_code_select");
@@ -173,24 +182,31 @@
         var activeType =
             $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
         var url = "/problems/list?type=" + encodeURIComponent(activeType);
+        console.log("Active type:", activeType);
 
         // Logic: Manufacturing -> Use DataTables Excel Button (In Table)
         // Others -> Hide DataTables Excel Button
         var isMfg = activeType === "manufacturing";
         $("#btnExportList").show(); // Always show the main Export button
 
+        // Helper to toggle buttons
+        function toggleExcelButton(show) {
+            var $btns = $(".dt-buttons");
+            if (show) {
+                $btns.removeClass("d-none");
+                $btns.show();
+            } else {
+                $btns.addClass("d-none");
+                $btns.hide();
+            }
+        }
+        console.log($(".dt-buttons"));  // Cek apakah tombol-tombol muncul di sini
+
+
         if ($.fn.DataTable.isDataTable("#table-problem")) {
             var dt = $("#table-problem").DataTable();
             dt.ajax.url(url).load();
-            
-            // Toggle DataTables Buttons
-            if (dt.buttons) {
-                if (isMfg) {
-                    dt.buttons().container().show();
-                } else {
-                    dt.buttons().container().hide();
-                }
-            }
+            toggleExcelButton(isMfg);
             return;
         }
 
@@ -198,11 +214,15 @@
             dom: "Bfrtip",
             buttons: [
                 {
-                    extend: "excelHtml5",
                     text: '<i class="bi bi-file-earmark-excel"></i> Excel',
                     className: "btn btn-success btn-sm mb-3",
-                    exportOptions: {
-                        columns: ":not(:last-child)", // Exclude actions column
+                    action: function (e, dt, node, config) {
+                        var activeType =
+                            $(".nav-tabs .nav-link.active").data("type") ||
+                            "manufacturing";
+                        window.location.href =
+                            "/problems/export-table?type=" +
+                            encodeURIComponent(activeType);
                     },
                 },
             ],
@@ -211,14 +231,8 @@
                 dataSrc: "",
             },
             initComplete: function () {
-                var dt = this.api();
-                if (dt.buttons) {
-                    if (isMfg) {
-                        dt.buttons().container().show();
-                    } else {
-                        dt.buttons().container().hide();
-                    }
-                }
+                toggleExcelButton(isMfg);
+                lucide.createIcons();
             },
             columns: [
                 {
@@ -252,8 +266,9 @@
                         }
 
                         return `
+                        
                         <button class="btn btn-sm btn-outline-info me-2 btn-detail" data-id="${data}"><i data-lucide="eye"></i></button>
-                        <button class="btn btn-sm btn-outline-primary me-2 btn-excel" data-id="${data}"><i data-lucide="file-spreadsheet"></i></button>
+                        ${row.raw_type === 'manufacturing' ? `<button class="btn btn-sm btn-outline-primary me-2 btn-excel" data-id="${data}"><i data-lucide="file-spreadsheet"></i></button>` : ''}
                         <button class="btn btn-sm btn-outline-danger me-2 btn-p-delete" data-id="${data}"><i data-lucide="trash"></i></button>
                         ${updateButton}`;
                     },
@@ -942,53 +957,58 @@
                 var groupSuffix = $("#group_code_suffix").val().trim();
                 var fullCode = $("#group_code").val().trim();
 
-                if (!groupMode) {
-                    if (window.Swal)
-                        Swal.fire({
-                            icon: "error",
-                            title: "Problem Code is required",
-                        });
-                    else alert("Problem Code is required");
-                    return;
-                }
-
-                if (groupMode === "existing") {
-                    if (!groupSelectVal || groupSelectVal === "__new__") {
+                if (type !== "manufacturing") {
+                    if (!groupMode) {
                         if (window.Swal)
                             Swal.fire({
                                 icon: "error",
-                                title: "Please select existing Problem Code",
+                                title: "Problem Code is required",
                             });
-                        else alert("Please select existing Problem Code");
+                        else alert("Problem Code is required");
                         return;
                     }
-                    if (!fullCode) {
-                        fullCode = groupSelectVal;
-                        $("#group_code").val(fullCode);
-                    }
-                    formData.append("group_code_mode", "existing");
-                    formData.append("group_code_existing", groupSelectVal);
-                } else if (groupMode === "new") {
-                    if (!groupSuffix) {
-                        if (window.Swal)
-                            Swal.fire({
-                                icon: "error",
-                                title: "Please input suffix for new Problem Code",
-                            });
-                        else alert("Please input suffix for new Problem Code");
-                        return;
-                    }
-                    if (!fullCode) {
-                        var prefix = buildGroupCodePrefix();
-                        fullCode = prefix + groupSuffix;
-                        $("#group_code").val(fullCode);
-                    }
-                    formData.append("group_code_mode", "new");
-                    formData.append("group_code_suffix", groupSuffix);
-                }
 
-                if (fullCode) {
-                    formData.append("group_code", fullCode);
+                    if (groupMode === "existing") {
+                        if (!groupSelectVal || groupSelectVal === "__new__") {
+                            if (window.Swal)
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Please select existing Problem Code",
+                                });
+                            else alert("Please select existing Problem Code");
+                            return;
+                        }
+                        if (!fullCode) {
+                            fullCode = groupSelectVal;
+                            $("#group_code").val(fullCode);
+                        }
+                        formData.append("group_code_mode", "existing");
+                        formData.append("group_code_existing", groupSelectVal);
+                    } else if (groupMode === "new") {
+                        if (!groupSuffix) {
+                            if (window.Swal)
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Please input suffix for new Problem Code",
+                                });
+                            else
+                                alert(
+                                    "Please input suffix for new Problem Code",
+                                );
+                            return;
+                        }
+                        if (!fullCode) {
+                            var prefix = buildGroupCodePrefix();
+                            fullCode = prefix + groupSuffix;
+                            $("#group_code").val(fullCode);
+                        }
+                        formData.append("group_code_mode", "new");
+                        formData.append("group_code_suffix", groupSuffix);
+                    }
+
+                    if (fullCode) {
+                        formData.append("group_code", fullCode);
+                    }
                 }
 
                 formData.append("id_location", locationId);
@@ -1175,6 +1195,14 @@
             $("#d_group_code_edit_container").addClass("d-none");
             $("#d_gc_suffix").val("");
             $("#d_gc_prefix").text("");
+
+            // Toggle Group Code visibility in Detail Modal based on type
+            var isMfgDetail = row.raw_type === "manufacturing";
+            if (isMfgDetail) {
+                $("#d_group_code").closest(".col-md-6").addClass("d-none");
+            } else {
+                $("#d_group_code").closest(".col-md-6").removeClass("d-none");
+            }
 
             // Reset UI state
             $("#btn-save-problem").data("id", id).addClass("d-none");
@@ -1456,6 +1484,21 @@
             $(
                 "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_status",
             ).prop("disabled", false);
+
+            // Safety: Prevent switching between Manufacturing and other types (different tables)
+            var currentType = $("#d_type").val();
+            $("#d_type option").prop("disabled", false); // Reset options
+
+            if (currentType === "manufacturing") {
+                // If currently manufacturing, cannot switch to others (ID mismatch risk)
+                $("#d_type").prop("disabled", true);
+            } else {
+                // If currently others, cannot switch to manufacturing
+                $("#d_type option[value='manufacturing']").prop(
+                    "disabled",
+                    true,
+                );
+            }
 
             var existingCode = $("#d_group_code").val();
             if (!existingCode) {
