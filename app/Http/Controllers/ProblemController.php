@@ -37,6 +37,9 @@ class ProblemController extends Controller
         if ($request->filled('project_id')) $q->where('id_project', $request->integer('project_id'));
         if ($request->filled('kanban_id')) $q->where('id_kanban', $request->integer('kanban_id'));
         if ($request->filled('type')) $q->where('type', $request->string('type'));
+        if ($request->filled('group_code')) $q->where('group_code', $request->string('group_code'));
+        if ($request->filled('start_date')) $q->whereDate('created_at', '>=', $request->string('start_date'));
+        if ($request->filled('end_date')) $q->whereDate('created_at', '<=', $request->string('end_date'));
 
         return response()->json($q->get()->map(function ($p) {
             return [
@@ -147,11 +150,14 @@ class ProblemController extends Controller
             'curative' => 'nullable|string',
             'attachment' => 'nullable|array',
             'attachment.*' => 'image|max:4096',
-            'group_code' => 'required|string|max:100',
-            'group_code_mode' => 'required|in:existing,new',
-            'group_code_existing' => 'nullable|string|max:100|required_if:group_code_mode,existing',
-            'group_code_suffix' => 'nullable|string|max:100|required_if:group_code_mode,new',
         ];
+
+        if ($request->input('type') !== 'manufacturing') {
+            $rules['group_code'] = 'required|string|max:100';
+            $rules['group_code_mode'] = 'required|in:existing,new';
+            $rules['group_code_existing'] = 'nullable|string|max:100|required_if:group_code_mode,existing';
+            $rules['group_code_suffix'] = 'nullable|string|max:100|required_if:group_code_mode,new';
+        }
 
         // Conditional validation
         if ($request->filled('new_project_name')) {
@@ -356,7 +362,53 @@ class ProblemController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function updateStatus(Request $request, int $id)
+    public function export(Request $request, int $id)
+    {
+        $problem = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])->find($id);
+
+        if (!$problem) {
+            return response()->json(['message' => 'Problem not found'], 404);
+        }
+
+        $type = $problem->type;
+        $problems = collect();
+        $fileName = "";
+
+        if ($type === 'manufacturing') {
+            $fileName = "Problem_{$type}_{$id}_" . date('Ymd_His') . ".xlsx";
+            $problems = collect([$problem]);
+        } else {
+            // Non-Manufacturing: Export based on Group Code
+            $groupCode = $problem->group_code;
+            
+            if ($groupCode) {
+                $problems = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
+                    ->where('type', $type)
+                    ->where('group_code', $groupCode)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+                
+                // Use group code in filename
+                $fileName = "Problem_{$type}_{$groupCode}_" . date('Ymd_His') . ".xlsx";
+            } else {
+                // Fallback: Export single problem if no group code
+                $problems = collect([$problem]);
+                $fileName = "Problem_{$type}_{$id}_" . date('Ymd_His') . ".xlsx";
+            }
+        }
+
+        return match (strtolower($type)) {
+            'manufacturing' => $this->exportFormatManufacturing($problems, $fileName),
+            'kentokai' => $this->exportFormatKentokai($problems, $fileName),
+            'ks' => $this->exportFormatKs($problems, $fileName),
+            'kd' => $this->exportFormatKd($problems, $fileName),
+            'sk' => $this->exportFormatSk($problems, $fileName),
+            'buyoff' => $this->exportFormatBuyoff($problems, $fileName),
+            default => response()->json(['message' => "Export format for type '$type' not supported"], 400),
+        };
+    }
+
+    public function updateStatus(Request $request, $id)
     {
         // Validasi status yang dikirimkan
         $request->validate([
@@ -465,7 +517,10 @@ class ProblemController extends Controller
             'font' => ['bold' => true],
         ];
 
-        foreach ($problems as $problem);
+        // For Manufacturing, we currently only support single problem export (Form format)
+        // So we take the first item from the collection.
+        $problem = $problems->first();
+        if (!$problem) return null; // Should not happen if check is done before
 
         // --- Logo & Title Header ---
         // Assuming TMMIN logo is text for now or simple placeholder

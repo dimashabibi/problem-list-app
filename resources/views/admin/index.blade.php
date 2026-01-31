@@ -211,7 +211,9 @@
                                             class="text-success fw-bold">{{ $thisWeekProblems['sk'] }}</span>
                                         unresolved issues.</p>
                                 </div>
-                                <div id="columnChartSk" class="apex-charts"></div>
+                                <div dir="ltr">
+                                    <div id="columnChartSk" class="apex-charts"></div>
+                                </div>
                             </div>
                         </div>
                     </div>

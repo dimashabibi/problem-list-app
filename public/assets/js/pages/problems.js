@@ -31,7 +31,8 @@
 
     var table;
     var myDropzone;
-    var expProjectChoices, expKanbanChoices, expGroupCodeChoices;
+    var fltProjectChoices, fltKanbanChoices, fltGroupCodeChoices;
+    var currentFilter = {};
 
     function currentProblemType() {
         var t = $('input[name="p_type"]:checked').val();
@@ -167,6 +168,21 @@
         Dropzone.autoDiscover = false;
     }
 
+    function toggleGroupCodeVisibility() {
+        var type = currentProblemType();
+        var isMfg = (type === 'manufacturing');
+        // Find the container for problem code inputs
+        // The structure is col-md-12 -> mb-3 -> label + row(inputs)
+        // We can find it via one of the inputs
+        var $container = $("#group_code_select").closest('.col-md-12');
+        
+        if (isMfg) {
+            $container.addClass('d-none');
+        } else {
+            $container.removeClass('d-none');
+        }
+    }
+
     function initTable() {
         if (!document.getElementById("table-problem")) return;
 
@@ -174,10 +190,16 @@
             $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
         var url = "/problems/list?type=" + encodeURIComponent(activeType);
 
+        if (currentFilter.project_id) url += "&project_id=" + encodeURIComponent(currentFilter.project_id);
+        if (currentFilter.kanban_id) url += "&kanban_id=" + encodeURIComponent(currentFilter.kanban_id);
+        if (currentFilter.group_code) url += "&group_code=" + encodeURIComponent(currentFilter.group_code);
+        if (currentFilter.start_date) url += "&start_date=" + encodeURIComponent(currentFilter.start_date);
+        if (currentFilter.end_date) url += "&end_date=" + encodeURIComponent(currentFilter.end_date);
+
         // Logic: Manufacturing -> Use DataTables Excel Button (In Table)
         // Others -> Hide DataTables Excel Button
         var isMfg = activeType === "manufacturing";
-        $("#btnExportList").show(); // Always show the main Export button
+        $("#btnFilterTable").show(); // Always show the main Filter button
 
         if ($.fn.DataTable.isDataTable("#table-problem")) {
             var dt = $("#table-problem").DataTable();
@@ -302,6 +324,7 @@
 
         resetGroupCodeUI();
         reloadProblemCodeOptions();
+        toggleGroupCodeVisibility();
 
         var modal = new bootstrap.Modal(
             document.getElementById("problemModal"),
@@ -312,7 +335,7 @@
     $(document).ready(function () {
         initTable();
 
-        // Init Choices for Export Modal
+        // Init Choices for Filter Modal
         if (typeof Choices !== "undefined") {
             var choicesOpts = {
                 searchEnabled: true,
@@ -321,15 +344,15 @@
                 placeholder: true,
                 placeholderValue: "Select Option",
             };
-            if (document.getElementById("exp_project")) {
-                expProjectChoices = new Choices("#exp_project", choicesOpts);
+            if (document.getElementById("flt_project")) {
+                fltProjectChoices = new Choices("#flt_project", choicesOpts);
             }
-            if (document.getElementById("exp_kanban")) {
-                expKanbanChoices = new Choices("#exp_kanban", choicesOpts);
+            if (document.getElementById("flt_kanban")) {
+                fltKanbanChoices = new Choices("#flt_kanban", choicesOpts);
             }
-            if (document.getElementById("exp_group_code")) {
-                expGroupCodeChoices = new Choices(
-                    "#exp_group_code",
+            if (document.getElementById("flt_group_code")) {
+                fltGroupCodeChoices = new Choices(
+                    "#flt_group_code",
                     choicesOpts,
                 );
             }
@@ -381,284 +404,216 @@
             initTable();
         });
 
-        // Export List Handler (Opens Modal)
-        $("#btnExportList")
+        // Filter Table Handler (Opens Modal)
+        $("#btnFilterTable")
             .off("click")
             .on("click", function () {
-                var activeType =
-                    $(".nav-tabs .nav-link.active").data("type") ||
-                    "manufacturing";
+                var activeType = $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
 
-                // Set the type in the modal
-                $("#exp_type").val(activeType);
+                // Set the type in the modal and disable it (context only)
+                $("#flt_type").val(activeType).prop('disabled', true);
 
-                // Reset other fields
-                if (expProjectChoices) expProjectChoices.setChoiceByValue("");
-                else $("#exp_project").val("");
+                // Set Dates
+                $("#flt_start_date").val(currentFilter.start_date || "");
+                $("#flt_end_date").val(currentFilter.end_date || "");
 
-                if (expKanbanChoices) {
-                    expKanbanChoices.clearChoices();
-                    expKanbanChoices.setChoices(
-                        [
-                            {
-                                value: "",
-                                label: "All Kanbans",
-                                selected: true,
-                                hidden: true,
-                            },
-                        ],
-                        "value",
-                        "label",
-                        true,
-                    );
+                // Reset logic for dependent selects
+                // We clear and reload based on currentFilter or empty
+                
+                if (fltProjectChoices) fltProjectChoices.setChoiceByValue(currentFilter.project_id ? currentFilter.project_id.toString() : "");
+                else $("#flt_project").val(currentFilter.project_id || "");
+
+                // Clear downstream
+                if (fltKanbanChoices) {
+                    fltKanbanChoices.clearChoices();
+                    fltKanbanChoices.setChoices([{ value: "", label: "All Kanbans", selected: true, hidden: true }], "value", "label", true);
                 } else {
-                    $("#exp_kanban").html(
-                        '<option value="">All Kanbans</option>',
-                    );
+                    $("#flt_kanban").html('<option value="">All Kanbans</option>');
                 }
 
-                if (expGroupCodeChoices) {
-                    expGroupCodeChoices.clearChoices();
-                    expGroupCodeChoices.setChoices(
-                        [
-                            {
-                                value: "",
-                                label: "Select Group Code",
-                                selected: true,
-                            },
-                        ],
-                        "value",
-                        "label",
-                        true,
-                    );
+                if (fltGroupCodeChoices) {
+                    fltGroupCodeChoices.clearChoices();
+                    fltGroupCodeChoices.setChoices([{ value: "", label: "Select Group Code", selected: true }], "value", "label", true);
                 } else {
-                    $("#exp_group_code").html(
-                        '<option value="">Select Group Code</option>',
-                    );
+                    $("#flt_group_code").html('<option value="">Select Group Code</option>');
                 }
 
-                // Show the modal
-                var exportModal = new bootstrap.Modal(
-                    document.getElementById("exportModal"),
-                );
-                exportModal.show();
-            });
-
-        // Export Modal: Type Change
-        $("#exp_type").on("change", function () {
-            if (expProjectChoices) expProjectChoices.setChoiceByValue("");
-            else $("#exp_project").val("");
-
-            if (expKanbanChoices) {
-                expKanbanChoices.clearChoices();
-                expKanbanChoices.setChoices(
-                    [{ value: "", label: "All Kanbans", selected: true }],
-                    "value",
-                    "label",
-                    true,
-                );
-            } else {
-                $("#exp_kanban").html('<option value="">All Kanbans</option>');
-            }
-
-            if (expGroupCodeChoices) {
-                expGroupCodeChoices.clearChoices();
-                expGroupCodeChoices.setChoices(
-                    [{ value: "", label: "Select Group Code", selected: true }],
-                    "value",
-                    "label",
-                    true,
-                );
-            } else {
-                $("#exp_group_code").html(
-                    '<option value="">Select Group Code</option>',
-                );
-            }
-        });
-
-        // Export Modal: Project Change
-        $("#exp_project")
-            .off("change")
-            .on("change", function () {
-                var projectId = $(this).val();
-
-                if (expKanbanChoices) {
-                    expKanbanChoices.clearChoices();
-                    expKanbanChoices.setChoices(
-                        [{ value: "", label: "All Kanbans", selected: true }],
-                        "value",
-                        "label",
-                        true,
-                    );
-                } else {
-                    $("#exp_kanban").html(
-                        '<option value="">All Kanbans</option>',
-                    );
-                }
-
-                if (expGroupCodeChoices) {
-                    expGroupCodeChoices.clearChoices();
-                    expGroupCodeChoices.setChoices(
-                        [
-                            {
-                                value: "",
-                                label: "Select Group Code",
-                                selected: true,
-                            },
-                        ],
-                        "value",
-                        "label",
-                        true,
-                    );
-                } else {
-                    $("#exp_group_code").html(
-                        '<option value="">Select Group Code</option>',
-                    );
-                }
-
+                // If we have a project, we need to load kanbans
+                var projectId = $("#flt_project").val();
                 if (projectId) {
                     ajax({
                         url: "/kanbans/list",
                         method: "GET",
                         data: { project_id: projectId },
                     }).done(function (items) {
-                        if (expKanbanChoices) {
-                            var choices = [
-                                {
-                                    value: "",
-                                    label: "All Kanbans",
-                                    selected: true,
-                                },
-                            ];
+                        if (fltKanbanChoices) {
+                            var choices = [{ value: "", label: "All Kanbans", selected: true }];
                             items.forEach(function (k) {
-                                choices.push({
-                                    value: k.id_kanban,
-                                    label: k.kanban_name,
-                                });
+                                choices.push({ value: k.id_kanban, label: k.kanban_name });
                             });
-                            expKanbanChoices.setChoices(
-                                choices,
-                                "value",
-                                "label",
-                                true,
-                            );
+                            fltKanbanChoices.setChoices(choices, "value", "label", true);
+                            // Restore selected kanban
+                            if (currentFilter.kanban_id) fltKanbanChoices.setChoiceByValue(currentFilter.kanban_id.toString());
                         } else {
                             items.forEach(function (k) {
-                                $("#exp_kanban").append(
-                                    '<option value="' +
-                                        k.id_kanban +
-                                        '">' +
-                                        k.kanban_name +
-                                        "</option>",
-                                );
+                                $("#flt_kanban").append('<option value="' + k.id_kanban + '">' + k.kanban_name + "</option>");
                             });
+                            $("#flt_kanban").val(currentFilter.kanban_id || "");
+                        }
+
+                        // If we have kanban, load group codes
+                        var kanbanId = $("#flt_kanban").val();
+                        if (kanbanId) {
+                            loadGroupCodes(activeType, projectId, kanbanId);
                         }
                     });
                 }
+
+                var modal = new bootstrap.Modal(document.getElementById("filterModal"));
+                modal.show();
             });
 
-        // Export Modal: Kanban Change -> Load Group Codes
-        $("#exp_kanban")
-            .off("change")
-            .on("change", function () {
-                var type = $("#exp_type").val();
-                var projectId = $("#exp_project").val();
-                var kanbanId = $(this).val();
+        // Helper to load group codes
+        function loadGroupCodes(type, projectId, kanbanId) {
+             if (!type || !projectId || !kanbanId) return;
+             
+             var url = "/api/problem-codes?type=" + encodeURIComponent(type) +
+                "&id_project=" + encodeURIComponent(projectId) +
+                "&id_kanban=" + encodeURIComponent(kanbanId);
 
-                if (expGroupCodeChoices) {
-                    expGroupCodeChoices.clearChoices();
-                    expGroupCodeChoices.setChoices(
-                        [
-                            {
-                                value: "",
-                                label: "Select Group Code",
-                                selected: true,
-                            },
-                        ],
-                        "value",
-                        "label",
-                        true,
-                    );
+            $.getJSON(url).done(function (data) {
+                if (fltGroupCodeChoices) {
+                    var choices = [{ value: "", label: "Select Group Code", selected: true }];
+                    (data || []).forEach(function (row) {
+                        if (row.code) choices.push({ value: row.code, label: row.code });
+                    });
+                    fltGroupCodeChoices.setChoices(choices, "value", "label", true);
+                    if (currentFilter.group_code) fltGroupCodeChoices.setChoiceByValue(currentFilter.group_code);
                 } else {
-                    $("#exp_group_code").html(
-                        '<option value="">Select Group Code</option>',
-                    );
-                }
-
-                if (type && projectId && kanbanId) {
-                    var url =
-                        "/api/problem-codes?type=" +
-                        encodeURIComponent(type) +
-                        "&id_project=" +
-                        encodeURIComponent(projectId) +
-                        "&id_kanban=" +
-                        encodeURIComponent(kanbanId);
-
-                    $.getJSON(url).done(function (data) {
-                        if (expGroupCodeChoices) {
-                            var choices = [
-                                {
-                                    value: "",
-                                    label: "Select Group Code",
-                                    selected: true,
-                                },
-                            ];
-                            (data || []).forEach(function (row) {
-                                if (row.code) {
-                                    choices.push({
-                                        value: row.code,
-                                        label: row.code,
-                                    });
-                                }
-                            });
-                            expGroupCodeChoices.setChoices(
-                                choices,
-                                "value",
-                                "label",
-                                true,
-                            );
-                        } else {
-                            (data || []).forEach(function (row) {
-                                if (row.code) {
-                                    $("#exp_group_code").append(
-                                        '<option value="' +
-                                            row.code +
-                                            '">' +
-                                            row.code +
-                                            "</option>",
-                                    );
-                                }
-                            });
-                        }
+                    (data || []).forEach(function (row) {
+                        if (row.code) $("#flt_group_code").append('<option value="' + row.code + '">' + row.code + "</option>");
                     });
+                    $("#flt_group_code").val(currentFilter.group_code || "");
                 }
             });
+        }
 
-        // Export Modal: Do Export
-        $("#btnDoExport")
-            .off("click")
-            .on("click", function () {
-                var type = $("#exp_type").val();
-                var projectId = $("#exp_project").val();
-                var kanbanId = $("#exp_kanban").val();
-                var groupCode = $("#exp_group_code").val();
+        // Filter Modal: Project Change
+        $("#flt_project").off("change").on("change", function () {
+            var projectId = $(this).val();
 
-                var url =
-                    "/problems/export-group?type=" + encodeURIComponent(type);
-                if (projectId)
-                    url += "&id_project=" + encodeURIComponent(projectId);
-                if (kanbanId)
-                    url += "&id_kanban=" + encodeURIComponent(kanbanId);
-                if (groupCode)
-                    url += "&group_code=" + encodeURIComponent(groupCode);
+            // Reset Kanban
+            if (fltKanbanChoices) {
+                fltKanbanChoices.clearChoices();
+                fltKanbanChoices.setChoices([{ value: "", label: "All Kanbans", selected: true }], "value", "label", true);
+            } else {
+                $("#flt_kanban").html('<option value="">All Kanbans</option>');
+            }
 
-                window.location.href = url;
+            // Reset Group Code
+            if (fltGroupCodeChoices) {
+                fltGroupCodeChoices.clearChoices();
+                fltGroupCodeChoices.setChoices([{ value: "", label: "Select Group Code", selected: true }], "value", "label", true);
+            } else {
+                $("#flt_group_code").html('<option value="">Select Group Code</option>');
+            }
 
-                // Close modal
-                var modalEl = document.getElementById("exportModal");
-                var modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
-            });
+            if (projectId) {
+                ajax({
+                    url: "/kanbans/list",
+                    method: "GET",
+                    data: { project_id: projectId },
+                }).done(function (items) {
+                    if (fltKanbanChoices) {
+                        var choices = [{ value: "", label: "All Kanbans", selected: true }];
+                        items.forEach(function (k) {
+                            choices.push({ value: k.id_kanban, label: k.kanban_name });
+                        });
+                        fltKanbanChoices.setChoices(choices, "value", "label", true);
+                    } else {
+                        items.forEach(function (k) {
+                            $("#flt_kanban").append('<option value="' + k.id_kanban + '">' + k.kanban_name + "</option>");
+                        });
+                    }
+                });
+            }
+        });
+
+        // Filter Modal: Kanban Change -> Load Group Codes
+        $("#flt_kanban").off("change").on("change", function () {
+            var type = $("#flt_type").val();
+            var projectId = $("#flt_project").val();
+            var kanbanId = $(this).val();
+
+            // Reset Group Code
+            if (fltGroupCodeChoices) {
+                fltGroupCodeChoices.clearChoices();
+                fltGroupCodeChoices.setChoices([{ value: "", label: "Select Group Code", selected: true }], "value", "label", true);
+            } else {
+                $("#flt_group_code").html('<option value="">Select Group Code</option>');
+            }
+
+            if (type && projectId && kanbanId) {
+                loadGroupCodes(type, projectId, kanbanId);
+            }
+        });
+
+        // Reset Filter Logic
+        $("#btnResetFilter").off("click").on("click", function () {
+            // Reset currentFilter object
+            currentFilter = {};
+
+            // Reset UI Inputs
+            if (fltProjectChoices) {
+                fltProjectChoices.setChoiceByValue("");
+            } else {
+                $("#flt_project").val("");
+            }
+
+            // Reset Kanban
+            if (fltKanbanChoices) {
+                fltKanbanChoices.clearChoices();
+                fltKanbanChoices.setChoices([{ value: "", label: "All Kanbans", selected: true }], "value", "label", true);
+            } else {
+                $("#flt_kanban").html('<option value="">All Kanbans</option>');
+            }
+
+            // Reset Group Code
+            if (fltGroupCodeChoices) {
+                fltGroupCodeChoices.clearChoices();
+                fltGroupCodeChoices.setChoices([{ value: "", label: "Select Group Code", selected: true }], "value", "label", true);
+            } else {
+                $("#flt_group_code").html('<option value="">Select Group Code</option>');
+            }
+
+            // Reset Dates
+            $("#flt_start_date").val("");
+            $("#flt_end_date").val("");
+
+            // Reload Table
+            initTable();
+
+            // Close modal
+            var modalEl = document.getElementById("filterModal");
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        });
+
+        // Apply Filter Logic
+        $("#btnApplyFilter").off("click").on("click", function () {
+            currentFilter.project_id = $("#flt_project").val();
+            currentFilter.kanban_id = $("#flt_kanban").val();
+            currentFilter.group_code = $("#flt_group_code").val();
+            currentFilter.start_date = $("#flt_start_date").val();
+            currentFilter.end_date = $("#flt_end_date").val();
+
+            initTable();
+
+            // Close modal
+            var modalEl = document.getElementById("filterModal");
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        });
 
         $("#btnProblemAdd")
             .off("click")
@@ -754,6 +709,7 @@
 
         $(document).on("change", 'input[name="p_type"]', function () {
             reloadProblemCodeOptions();
+            toggleGroupCodeVisibility();
         });
 
         $(document)

@@ -1,15 +1,15 @@
-<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+<div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="exportModalLabel">Export Problem Group</h5>
+                <h5 class="modal-title" id="filterModalLabel">Filter Table</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="exportForm">
+                <form id="filterForm">
                     <div class="mb-3">
                         <label class="form-label">Type</label>
-                        <select class="form-control" id="exp_type">
+                        <select class="form-control" id="flt_type">
                             <option value="manufacturing">Manufacturing</option>
                             <option value="kentokai">Kentokai</option>
                             <option value="ks">KS</option>
@@ -20,7 +20,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Project</label>
-                        <select class="form-control" id="exp_project">
+                        <select class="form-control" id="flt_project">
                             <option value="">All Projects</option>
                             @foreach (\App\Models\Project::orderBy('project_name')->get() as $p)
                                 <option value="{{ $p->id_project }}">{{ $p->project_name }}</option>
@@ -29,21 +29,36 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Kanban</label>
-                        <select class="form-control" id="exp_kanban">
+                        <select class="form-control" id="flt_kanban">
                             <option value="">All Kanbans</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Group Code</label>
-                        <select class="form-control" id="exp_group_code">
+                        <select class="form-control" id="flt_group_code">
                             <option value="">Select Group Code</option>
                         </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="flt_start_date">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="flt_end_date">
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto" id="btnResetFilter">Reset Filter</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-success" id="btnDoExport">Download Excel</button>
+                <button type="button" class="btn btn-primary" id="btnApplyFilter">Apply Filter</button>
             </div>
         </div>
     </div>

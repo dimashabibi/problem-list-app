@@ -154,16 +154,11 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             dataLabels: {
                 enabled: true,
-                offsetY: -25,
+                offsetY: -35,
                 style: {
                     fontSize: "12px",
                     colors: ["#304758"],
                 },
-            },
-            stroke: {
-                show: true,
-                width: 2,
-                colors: ["transparent"],
             },
             series: [
                 {
@@ -229,16 +224,11 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             dataLabels: {
                 enabled: true,
-                offsetY: -25,
+                offsetY: -35,
                 style: {
                     fontSize: "12px",
                     colors: ["#304758"],
                 },
-            },
-            stroke: {
-                show: true,
-                width: 2,
-                colors: ["transparent"],
             },
             series: [
                 {
@@ -304,16 +294,11 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             dataLabels: {
                 enabled: true,
-                offsetY: -25,
+                offsetY: -35,
                 style: {
                     fontSize: "12px",
                     colors: ["#304758"],
                 },
-            },
-            stroke: {
-                show: true,
-                width: 2,
-                colors: ["transparent"],
             },
             series: [
                 {

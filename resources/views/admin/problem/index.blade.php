@@ -74,7 +74,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Problems</h5>
                         <div>
-                            <button id="btnExportList" class="btn btn-success me-2">Export Problem</button>
+                            <button id="btnFilterTable" class="btn btn-info me-2"><i class="bi bi-funnel"></i> Filter Table</button>
                             <button id="btnProblemAdd" class="btn btn-primary">Add Problem</button>
                         </div>
                     </div>
