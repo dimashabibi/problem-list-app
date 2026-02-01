@@ -217,7 +217,8 @@
         }
 
         table = $("#table-problem").DataTable({
-            dom: "Bfrtip",
+            dom: "Blfrtip",
+            lengthMenu: [ [10, 25, 50, -1], [10, 25, 50, "All"] ],
             buttons: [
                 {
                     extend: "excelHtml5",
@@ -1412,6 +1413,9 @@
             $(
                 "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_status",
             ).prop("disabled", false);
+
+            var type = $("#d_type").val();
+            if (type === 'manufacturing') return; // Skip group code logic for manufacturing
 
             var existingCode = $("#d_group_code").val();
             if (!existingCode) {
