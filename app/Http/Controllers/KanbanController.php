@@ -34,7 +34,7 @@ class KanbanController extends Controller
             'project_id' => 'required|integer|exists:projects,id_project',
             'kanban_name' => 'required|string|max:20',
             'part_name' => 'required|string|max:100',
-            'part_number' => 'required|string|max:50',
+            'part_number' => 'required|integer',
             'item' => 'nullable|integer',
         ]);
         $kanban = Kanban::create($validated);
@@ -48,7 +48,7 @@ class KanbanController extends Controller
             'items.*.project_id' => 'required|integer|exists:projects,id_project',
             'items.*.kanban_name' => 'required|string|max:20',
             'items.*.part_name' => 'required|string|max:100',
-            'items.*.part_number' => 'required|string|max:50',
+            'items.*.part_number' => 'required|integer',
         ]);
         $created = [];
         foreach ($validated['items'] as $item) {
@@ -68,7 +68,7 @@ class KanbanController extends Controller
             'project_id' => 'required|integer|exists:projects,id_project',
             'kanban_name' => 'required|string|max:20',
             'part_name' => 'required|string|max:100',
-            'part_number' => 'required|string|max:50',
+            'part_number' => 'required|integer',
             'item' => 'nullable|integer',
         ]);
         $kanban = Kanban::findOrFail($id);

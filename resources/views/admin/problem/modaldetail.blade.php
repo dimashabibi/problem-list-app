@@ -112,6 +112,11 @@
                                         <label for="d_curative" class="form-label">Curative</label>
                                         <textarea id="d_curative" class="form-control" rows="3" disabled></textarea>
                                     </div>
+
+                                    <div class="col-12">
+                                        <label for="d_preventive" class="form-label">Preventive</label>
+                                        <textarea id="d_preventive" class="form-control" rows="3" disabled></textarea>
+                                    </div>
                                 </div>
                             </form>
                         </div>

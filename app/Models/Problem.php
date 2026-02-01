@@ -23,6 +23,7 @@ class Problem extends Model
         'problem',
         'cause',
         'curative',
+        'preventive',
         'attachment',
         'status',
         'id_user',

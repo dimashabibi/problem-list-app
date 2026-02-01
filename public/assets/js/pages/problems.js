@@ -778,6 +778,7 @@
                 var problem = $("#p_problem").val().trim();
                 var cause = $("#p_cause").val().trim();
                 var curative = $("#p_curative").val().trim();
+                var preventive = $("#p_preventive").val();
 
                 var formData = new FormData();
 
@@ -953,6 +954,7 @@
                 formData.append("problem", problem);
                 formData.append("cause", cause);
                 formData.append("curative", curative);
+                formData.append("preventive", preventive);
 
                 var $btn = $("#saveProblem");
                 $btn.prop("disabled", true);
@@ -1125,6 +1127,7 @@
             $("#d_problem").val(row.problem || "");
             $("#d_cause").val(row.cause || "");
             $("#d_curative").val(row.curative || "");
+            $("#d_preventive").val(row.preventive || "");
 
             // Group Code
             $("#d_group_code").val(row.group_code || "");
@@ -1137,7 +1140,7 @@
             $("#btn-save-problem").data("id", id).addClass("d-none");
             $("#btn-edit-problem").removeClass("d-none");
             $(
-                "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_status",
+                "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
             ).prop("disabled", true);
 
             // Generate carousel for attachments
@@ -1411,7 +1414,7 @@
             $(this).addClass("d-none");
             $("#btn-save-problem").removeClass("d-none");
             $(
-                "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_status",
+                "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
             ).prop("disabled", false);
 
             var type = $("#d_type").val();
@@ -1443,6 +1446,7 @@
                 problem: $("#d_problem").val(),
                 cause: $("#d_cause").val(),
                 curative: $("#d_curative").val(),
+                preventive: $("#d_preventive").val(),
             };
 
             // Check if we are updating group code
@@ -1487,7 +1491,7 @@
 
                     // Disable fields and reset buttons
                     $(
-                        "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_status",
+                        "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
                     ).prop("disabled", true);
                     $("#d_group_code").val(
                         data.group_code || $("#d_group_code").val(),

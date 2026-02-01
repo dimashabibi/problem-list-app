@@ -60,6 +60,7 @@ class ProblemController extends Controller
                 'problem' => $p->problem,
                 'cause' => $p->cause,
                 'curative' => $p->curative,
+                'preventive' => $p->preventive,
                 'attachment' => $p->attachment,
                 'attachments' => $p->attachments->map(fn($a) => $a->file_path)->toArray(),
                 'status' => $p->status ?? 'dispatched', // Fallback for existing null records
@@ -148,6 +149,7 @@ class ProblemController extends Controller
             'problem' => 'required|string',
             'cause' => 'nullable|string',
             'curative' => 'nullable|string',
+            'preventive' => 'nullable|string',
             'attachment' => 'nullable|array',
             'attachment.*' => 'image|max:4096',
         ];
@@ -273,6 +275,7 @@ class ProblemController extends Controller
             'problem' => $request->input('problem'),
             'cause' => $request->input('cause'),
             'curative' => $request->input('curative'),
+            'preventive' => $request->input('preventive'),
             'attachment' => $mainAttachmentPath,
             'status' => 'in_progress',
             'id_user' => Auth::id() ?? 1,
@@ -306,6 +309,7 @@ class ProblemController extends Controller
             'problem' => 'required|string',
             'cause' => 'nullable|string',
             'curative' => 'nullable|string',
+            'preventive' => 'nullable|string',
         ];
 
         $validated = $request->validate($rules);
@@ -320,6 +324,7 @@ class ProblemController extends Controller
             'problem' => $request->input('problem'),
             'cause' => $request->input('cause'),
             'curative' => $request->input('curative'),
+            'preventive' => $request->input('preventive'),
         ];
 
         if ($request->filled('group_code')) {
@@ -380,14 +385,14 @@ class ProblemController extends Controller
         } else {
             // Non-Manufacturing: Export based on Group Code
             $groupCode = $problem->group_code;
-            
+
             if ($groupCode) {
                 $problems = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
                     ->where('type', $type)
                     ->where('group_code', $groupCode)
                     ->orderBy('created_at', 'asc')
                     ->get();
-                
+
                 // Use group code in filename
                 $fileName = "Problem_{$type}_{$groupCode}_" . date('Ymd_His') . ".xlsx";
             } else {
