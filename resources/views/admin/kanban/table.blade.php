@@ -4,6 +4,8 @@
             <th>No</th>
             <th>Project</th>
             <th>Kanban Name</th>
+            <th>Part Name</th>
+            <th>Part Number</th>
             <th>Actions</th>
         </tr>
     </thead>

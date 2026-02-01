@@ -24,6 +24,16 @@
                                 <input type="text" class="form-control kanban_name" maxlength="20" required />
                                 <div class="invalid-feedback">Kanban name is required and max 20 chars.</div>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label">Part Name</label>
+                                <input type="text" class="form-control part_name" maxlength="20" required />
+                                <div class="invalid-feedback">Part name is required and max 20 chars.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Part Number</label>
+                                <input type="text" class="form-control part_number" maxlength="20" required />
+                                <div class="invalid-feedback">Part number is required and max 20 chars.</div>
+                            </div>
                             <div class="text-end">
                                 <button type="button" class="btn btn-outline-danger btn-kanban-remove">Remove</button>
                             </div>

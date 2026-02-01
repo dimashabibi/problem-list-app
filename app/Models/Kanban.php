@@ -17,6 +17,8 @@ class Kanban extends Model
     protected $fillable = [
         'project_id',
         'kanban_name',
+        'part_name',
+        'part_number',
     ];
 
     public function project()

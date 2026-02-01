@@ -53,6 +53,8 @@
                 }
             },
             { data: 'kanban_name' },
+            { data: 'part_name' },
+            { data: 'part_number' },
             { 
                 data: 'id_kanban',
                 orderable: false,
@@ -75,6 +77,8 @@
     $('#kanbanMultiInputs').find('.kanban-item:gt(0)').remove();
     var first = $('#kanbanMultiInputs .kanban-item').first();
     first.find('.kanban_name').val(data && data.kanban_name || '').removeClass('is-invalid');
+    first.find('.part_name').val(data && data.part_name || '').removeClass('is-invalid');
+    first.find('.part_number').val(data && data.part_number || '').removeClass('is-invalid');
     var modal = new bootstrap.Modal(document.getElementById('kanbanModal'));
     modal.show();
   }
@@ -101,8 +105,10 @@
     var items = [];
     $('#kanbanMultiInputs .kanban-item').each(function(){
       var pid = $(this).find('.project_select').val();
-      var name = $(this).find('.kanban_name').val().trim();
-      items.push({ project_id: pid, kanban_name: name });
+      var kname = $(this).find('.kanban_name').val().trim();
+      var pname = $(this).find('.part_name').val().trim();
+      var pnumber = $(this).find('.part_number').val().trim();
+      items.push({ project_id: pid, kanban_name: kname, part_name: pname, part_number: pnumber });
     });
     return items;
   }
@@ -122,6 +128,8 @@
       var last = $('#kanbanMultiInputs .kanban-item').last();
       var clone = last.clone();
       clone.find('.kanban_name').val('').removeClass('is-invalid');
+      clone.find('.part_name').val('').removeClass('is-invalid');
+      clone.find('.part_number').val('').removeClass('is-invalid');
       clone.find('.project_select').val('');
       $('#kanbanMultiInputs').append(clone);
     });
@@ -135,12 +143,14 @@
       var id = $('#id_kanban').val();
       if (id) {
         var pid = $('#kanbanMultiInputs .kanban-item').first().find('.project_select').val();
-        var name = $('#kanbanMultiInputs .kanban-item').first().find('.kanban_name').val().trim();
-        if(!pid || !name){
-          if (window.Swal) Swal.fire({ icon: 'error', title: 'Project and kanban name are required' });
+        var kname = $('#kanbanMultiInputs .kanban-item').first().find('.kanban_name').val().trim();
+        var pname = $('#kanbanMultiInputs .kanban-item').first().find('.part_name').val().trim();
+        var pnumber = $('#kanbanMultiInputs .kanban-item').first().find('.part_number').val().trim();
+        if(!pid || !kname || !pname || !pnumber){
+          if (window.Swal) Swal.fire({ icon: 'error', title: 'Project, kanban name, part name, and part number are required' });
           return;
         }
-        var req = ajax({ url: '/kanbans/' + id, method: 'PUT', data: { project_id: pid, kanban_name: name } });
+        var req = ajax({ url: '/kanbans/' + id, method: 'PUT', data: { project_id: pid, kanban_name: kname, part_name: pname, part_number: pnumber } });
         req.done(function(){
           closeKanbanModal();
           if (window.Swal) Swal.fire({ icon: 'success', title: 'Kanban updated', timer: 1500, showConfirmButton: false });
@@ -150,12 +160,12 @@
         var items = collectKanbanItems();
         var invalid = false;
         items.forEach(function(it){
-          if(!it.project_id || !it.kanban_name){
+          if(!it.project_id || !it.kanban_name || !it.part_name || !it.part_number){
             invalid = true;
           }
         });
         if (invalid){
-          if (window.Swal) Swal.fire({ icon: 'error', title: 'Each row needs a project and kanban name' });
+          if (window.Swal) Swal.fire({ icon: 'error', title: 'Each row needs a project, kanban name, part name, and part number' });
           return;
         }
         var req = ajax({ url: '/kanbans/bulk', method: 'POST', data: { items: items } });
@@ -169,11 +179,13 @@
 
     $(document).on('click', '.btn-k-edit', function(){
       var id = $(this).data('id');
-      var pname = $(this).data('pname');
+      var projName = $(this).data('projname');
       var kname = $(this).data('kname');
-      // Find pid from select using pname
-      var pid = $('#kanbanMultiInputs .project_select option').filter(function(){ return $(this).text() === pname; }).val();
-      openKanbanModal('Edit Kanban', { id_kanban: id, project_id: pid, kanban_name: kname });
+      var partName = $(this).data('partname');
+      var partNumber = $(this).data('partnumber');
+      // Find pid from select using projName
+      var pid = $('#kanbanMultiInputs .project_select option').filter(function(){ return $(this).text() === projName; }).val();
+      openKanbanModal('Edit Kanban', { id_kanban: id, project_id: pid, kanban_name: kname, part_name: partName, part_number: partNumber });
       $('#kanbanMultiInputs .kanban-item').first().find('.project_select').val(pid);
     });
 
