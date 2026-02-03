@@ -900,49 +900,51 @@
                 var groupSuffix = $("#group_code_suffix").val().trim();
                 var fullCode = $("#group_code").val().trim();
 
-                if (!groupMode) {
-                    if (window.Swal)
-                        Swal.fire({
-                            icon: "error",
-                            title: "Problem Code is required",
-                        });
-                    else alert("Problem Code is required");
-                    return;
-                }
+                if (type !== 'manufacturing') {
+                    if (!groupMode) {
+                        if (window.Swal)
+                            Swal.fire({
+                                icon: "error",
+                                title: "Problem Code is required",
+                            });
+                        else alert("Problem Code is required");
+                        return;
+                    }
 
-                if (groupMode === "existing") {
-                    if (!groupSelectVal || groupSelectVal === "__new__") {
-                        if (window.Swal)
-                            Swal.fire({
-                                icon: "error",
-                                title: "Please select existing Problem Code",
-                            });
-                        else alert("Please select existing Problem Code");
-                        return;
+                    if (groupMode === "existing") {
+                        if (!groupSelectVal || groupSelectVal === "__new__") {
+                            if (window.Swal)
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Please select existing Problem Code",
+                                });
+                            else alert("Please select existing Problem Code");
+                            return;
+                        }
+                        if (!fullCode) {
+                            fullCode = groupSelectVal;
+                            $("#group_code").val(fullCode);
+                        }
+                        formData.append("group_code_mode", "existing");
+                        formData.append("group_code_existing", groupSelectVal);
+                    } else if (groupMode === "new") {
+                        if (!groupSuffix) {
+                            if (window.Swal)
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Please input suffix for new Problem Code",
+                                });
+                            else alert("Please input suffix for new Problem Code");
+                            return;
+                        }
+                        if (!fullCode) {
+                            var prefix = buildGroupCodePrefix();
+                            fullCode = prefix + groupSuffix;
+                            $("#group_code").val(fullCode);
+                        }
+                        formData.append("group_code_mode", "new");
+                        formData.append("group_code_suffix", groupSuffix);
                     }
-                    if (!fullCode) {
-                        fullCode = groupSelectVal;
-                        $("#group_code").val(fullCode);
-                    }
-                    formData.append("group_code_mode", "existing");
-                    formData.append("group_code_existing", groupSelectVal);
-                } else if (groupMode === "new") {
-                    if (!groupSuffix) {
-                        if (window.Swal)
-                            Swal.fire({
-                                icon: "error",
-                                title: "Please input suffix for new Problem Code",
-                            });
-                        else alert("Please input suffix for new Problem Code");
-                        return;
-                    }
-                    if (!fullCode) {
-                        var prefix = buildGroupCodePrefix();
-                        fullCode = prefix + groupSuffix;
-                        $("#group_code").val(fullCode);
-                    }
-                    formData.append("group_code_mode", "new");
-                    formData.append("group_code_suffix", groupSuffix);
                 }
 
                 if (fullCode) {
