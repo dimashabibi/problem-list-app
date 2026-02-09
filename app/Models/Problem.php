@@ -19,7 +19,9 @@ class Problem extends Model
         'id_kanban',
         'id_item',
         'id_location',
+        'id_machine',
         'type',
+        'type_saibo',
         'problem',
         'cause',
         'curative',
@@ -29,6 +31,11 @@ class Problem extends Model
         'id_user',
         'group_code',
         'group_code_norm',
+        'classification',
+        'stage',
+        'id_seksi_in_charge',
+        'id_pic',
+        'hour',
     ];
 
     public function project()
@@ -53,6 +60,21 @@ class Problem extends Model
     public function location()
     {
         return $this->belongsTo(Location::class, 'id_location', 'id_location');
+    }
+
+    public function machine()
+    {
+        return $this->belongsTo(Machine::class, 'id_machine', 'id_machine');
+    }
+
+    public function seksiInCharge()
+    {
+        return $this->belongsTo(Location::class, 'id_seksi_in_charge', 'id_location');
+    }
+
+    public function pic()
+    {
+        return $this->belongsTo(Location::class, 'id_pic', 'id_location');
     }
 
     public function reporter()

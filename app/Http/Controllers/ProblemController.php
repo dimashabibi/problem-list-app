@@ -31,7 +31,7 @@ class ProblemController extends Controller
     public function list(Request $request)
     {
         $q = Problem::query()
-            ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
+            ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine', 'seksiInCharge', 'pic'])
             ->orderBy('id_problem', 'desc');
         if ($request->filled('item_id')) $q->where('id_item', $request->integer('item_id'));
         if ($request->filled('project_id')) $q->where('id_project', $request->integer('project_id'));
@@ -65,6 +65,14 @@ class ProblemController extends Controller
                 'attachments' => $p->attachments->map(fn($a) => $a->file_path)->toArray(),
                 'status' => $p->status ?? 'dispatched', // Fallback for existing null records
                 'reporter' => $p->reporter?->fullname ?? $p->reporter?->username,
+                'id_machine' => $p->id_machine,
+                'machine' => $p->machine?->name_machine,
+                'type_saibo' => $p->type_saibo,
+                'classification' => $p->classification,
+                'stage' => $p->stage,
+                'id_seksi_in_charge' => $p->id_seksi_in_charge,
+                'id_pic' => $p->id_pic,
+                'hour' => $p->hour,
             ];
         }));
     }
@@ -152,6 +160,10 @@ class ProblemController extends Controller
             'preventive' => 'nullable|string',
             'attachment' => 'nullable|array',
             'attachment.*' => 'image|max:4096',
+            'id_machine' => 'nullable|integer|exists:machines,id_machine',
+            'type_saibo' => 'nullable|in:baru,berulang',
+            'classification' => 'nullable|in:konst,komp,model',
+            'stage' => 'nullable|in:MFG,KS,KD,SK,T0,T1,T2,T3,BUYOFF,LT,HOMELINE',
         ];
 
         if ($request->input('type') !== 'manufacturing') {
@@ -281,6 +293,9 @@ class ProblemController extends Controller
             'id_user' => Auth::id() ?? 1,
             'group_code' => $groupCode,
             'group_code_norm' => $groupCodeNorm,
+            'id_seksi_in_charge' => $request->input('id_seksi_in_charge'),
+            'id_pic' => $request->input('id_pic'),
+            'hour' => $request->input('hour'),
         ]);
 
         $problem = Problem::create($problemData);
@@ -325,6 +340,10 @@ class ProblemController extends Controller
             'cause' => $request->input('cause'),
             'curative' => $request->input('curative'),
             'preventive' => $request->input('preventive'),
+            'id_machine' => $request->input('id_machine'),
+            'type_saibo' => $request->input('type_saibo'),
+            'classification' => $request->input('classification'),
+            'stage' => $request->input('stage'),
         ];
 
         if ($request->filled('group_code')) {
@@ -369,7 +388,7 @@ class ProblemController extends Controller
 
     public function export(Request $request, int $id)
     {
-        $problem = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])->find($id);
+        $problem = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine'])->find($id);
 
         if (!$problem) {
             return response()->json(['message' => 'Problem not found'], 404);
@@ -387,7 +406,7 @@ class ProblemController extends Controller
             $groupCode = $problem->group_code;
 
             if ($groupCode) {
-                $problems = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
+                $problems = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine'])
                     ->where('type', $type)
                     ->where('group_code', $groupCode)
                     ->orderBy('created_at', 'asc')
@@ -444,7 +463,7 @@ class ProblemController extends Controller
             return response()->json(['message' => 'Type is required'], 400);
         }
 
-        $query = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments'])
+        $query = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine'])
             ->where('type', $type);
 
         if ($groupCode) {
@@ -602,11 +621,11 @@ class ProblemController extends Controller
         $sheet->getStyle('Y5')->applyFromArray($blueHeaderStyle);
 
         $sheet->mergeCells('S6:U7');
-        $sheet->setCellValue('S6', 'Daniel W'); // Static per template example
+        $sheet->setCellValue('S6', ''); // Static per template example
         $sheet->getStyle('S6')->applyFromArray($centerStyle);
         $sheet->getStyle('S6')->applyFromArray($boldTextStyle);
         $sheet->mergeCells('V6:X7');
-        $sheet->setCellValue('V6', 'Mamat R'); // Static
+        $sheet->setCellValue('V6', ''); // Static
         $sheet->getStyle('V6')->applyFromArray($centerStyle);
         $sheet->getStyle('V6')->applyFromArray($boldTextStyle);
         $sheet->mergeCells('Y6:AC7');
@@ -690,6 +709,7 @@ class ProblemController extends Controller
         $sheet->getStyle('AE10')->applyFromArray($boldTextStyle);
 
         $sheet->mergeCells('AE12:AF12');
+        $sheet->setCellValue('AE12', $problem->machine?->name_machine);
         $sheet->setCellValue('AE12', 'Mesin');
         $sheet->getStyle('AE12')->applyFromArray($blueHeaderStyle);
         $sheet->mergeCells('AG12:AI12');
@@ -698,7 +718,7 @@ class ProblemController extends Controller
 
         $sheet->mergeCells('AE13:AF14');
         $sheet->mergeCells('AG13:AI14');
-        $sheet->setCellValue('AG13', $problem->type);
+        $sheet->setCellValue('AG13', $problem->stage);
         $sheet->getStyle('AG13')->applyFromArray($centerStyle);
         $sheet->getStyle('AG13')->applyFromArray($boldTextStyle);
 
@@ -711,10 +731,10 @@ class ProblemController extends Controller
         $sheet->getStyle('AG15')->applyFromArray($blueHeaderStyle);
 
         $sheet->mergeCells('AE16:AF17');
-        $sheet->setCellValue('AE16', 'Konst.'); // Placeholder
+        $sheet->setCellValue('AE16', $problem->classification); // Placeholder
         $sheet->getStyle('AE16')->applyFromArray($centerStyle);
         $sheet->mergeCells('AG16:AI17');
-        $sheet->setCellValue('AG16', 'Baru'); // Placeholder
+        $sheet->setCellValue('AG16', $problem->type_saibo); // Placeholder
         $sheet->getStyle('AG16')->applyFromArray($centerStyle);
 
         // Pass Through
@@ -749,6 +769,7 @@ class ProblemController extends Controller
         $sheet->mergeCells('AE26:AI28');
         $sheet->getStyle('AE26')->applyFromArray($centerStyle);
         $sheet->getStyle('AE26')->applyFromArray($boldTextStyle);
+        $sheet->setCellValue('AE26', $problem->seksiInCharge?->location_name);
 
         // Kolom B
         $sheet->mergeCells('B30:AI30');
@@ -766,6 +787,7 @@ class ProblemController extends Controller
         $sheet->getStyle('C31')->applyFromArray($boldTextStyle);
 
         $sheet->mergeCells('C34:P34');
+        $sheet->setCellValue('C34', $problem->curative);
         $sheet->mergeCells('C35:P35');
         $sheet->mergeCells('C36:P36');
         $sheet->mergeCells('C37:P37');
@@ -783,6 +805,7 @@ class ProblemController extends Controller
         $sheet->getStyle('Q31')->applyFromArray($centerStyle);
         $sheet->getStyle('Q31')->applyFromArray($boldTextStyle);
         $sheet->mergeCells('Q34:T34');
+        $sheet->setCellValue('Q34', $problem->pic?->location_name);
         $sheet->mergeCells('Q35:T35');
         $sheet->mergeCells('Q36:T36');
         $sheet->mergeCells('Q37:T37');
@@ -824,9 +847,12 @@ class ProblemController extends Controller
         $sheet->setCellValue('AG31', 'Hour');
         $sheet->getStyle('AG31')->applyFromArray($centerStyle);
         $sheet->getStyle('AG31')->applyFromArray($boldTextStyle);
+        $sheet->setCellValue('AG34', $problem->hour);
 
         $sheet->mergeCells('AH31:AI33');
         $sheet->mergeCells('AH34:AI34');
+        $sheet->setCellValue('AH34', $problem->pic?->rate);
+        $sheet->getStyle('AH34')->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
         $sheet->mergeCells('AH35:AI35');
         $sheet->mergeCells('AH36:AI36');
         $sheet->mergeCells('AH37:AI37');
@@ -837,6 +863,8 @@ class ProblemController extends Controller
         $sheet->mergeCells('AH42:AI42');
         $sheet->mergeCells('AH43:AI43');
         $sheet->mergeCells('AH44:AI44');
+        $sheet->setCellValue('AH44', '=SUM(AH34:AI34)');
+        $sheet->getStyle('AH44')->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
         // End Kolom B
 
         // KOLOM C

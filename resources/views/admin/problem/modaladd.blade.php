@@ -73,6 +73,78 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Machine</label>
+                                <select class="form-control" id="p_machine">
+                                    <option value="">Select machine</option>
+                                    @foreach (\App\Models\Machine::orderBy('name_machine')->get() as $m)
+                                        <option value="{{ $m->id_machine }}">{{ $m->name_machine }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Stage</label>
+                                <select class="form-control" id="p_stage">
+                                    <option value="">Select stage</option>
+                                    @foreach (['MFG', 'KS', 'KD', 'SK', 'T0', 'T1', 'T2', 'T3', 'BUYOFF', 'LT', 'HOMELINE'] as $s)
+                                        <option value="{{ $s }}">{{ $s }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Type Saibo</label>
+                                <select class="form-control" id="p_type_saibo">
+                                    <option value="">Select type</option>
+                                    <option value="baru">Baru</option>
+                                    <option value="berulang">Berulang</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Classification</label>
+                                <select class="form-control" id="p_classification">
+                                    <option value="">Select classification</option>
+                                    <option value="konst">Konst</option>
+                                    <option value="komp">Komp</option>
+                                    <option value="model">Model</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Seksi In Charge</label>
+                                <select class="form-control" id="p_seksi_in_charge">
+                                    <option value="">Select seksi</option>
+                                    @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
+                                        <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">PIC</label>
+                                <select class="form-control" id="p_pic">
+                                    <option value="">Select PIC</option>
+                                    @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
+                                        <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Hour</label>
+                                <input type="number" class="form-control" id="p_hour" min="0"
+                                    max="255" placeholder="Hour">
+                            </div>
+                        </div>
                         <div class="col-md-12">
                             <div class="mb-3">
                                 <label class="form-label d-block">Type</label>
@@ -154,7 +226,7 @@
                                 <textarea class="form-control" id="p_curative" rows="2" required></textarea>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label class="form-label">Preventive</label>
                                 <textarea class="form-control" id="p_preventive" rows="2"></textarea>
@@ -164,16 +236,16 @@
                             <div class="mb-3">
                                 <label class="form-label">Attachments (images)</label>
                                 <!-- Dropzone Area -->
-                                <div class="dropzone" id="problem-dropzone" style="border: 2px dashed #ccc; background: #fafafa; min-height: 100px;">
+                                <div class="dropzone" id="problem-dropzone"
+                                    style="border: 2px dashed #ccc; background: #fafafa; min-height: 100px;">
                                     <div class="dz-message needsclick">
                                         <div class="mb-3">
                                             <i class="display-4 text-muted bx bxs-cloud-upload"></i>
                                         </div>
                                         <h4>Drop files here or click to upload.</h4>
-                                        <p class="text-muted">(This is just a demo dropzone. Selected files are <strong>not</strong> actually uploaded.)</p>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Preview Container -->
                                 <div id="dropzone-preview" class="mt-3"></div>
                             </div>

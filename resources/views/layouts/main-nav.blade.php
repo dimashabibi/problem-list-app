@@ -76,6 +76,15 @@
                 </a>
             </li>
 
+            <li class="menu-item">
+                <a class="menu-link" href="{{ url('/admin/machines') }}">
+                    <span class="nav-icon">
+                        <i data-lucide="cpu"></i>
+                    </span>
+                    <span class="nav-text"> Machine List </span>
+                </a>
+            </li>
+
             <li class="menu-title">User Management</li>
 
             <li class="menu-item">

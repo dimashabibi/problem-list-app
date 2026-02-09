@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('kanbans') && !Schema::hasColumn('kanbans', 'preventive')) {
             Schema::table('kanbans', function (Blueprint $table) {
-                $table->text('preventive')->nullable()->after('curative');
+                $table->text('preventive')->nullable();
             });
         }
     }

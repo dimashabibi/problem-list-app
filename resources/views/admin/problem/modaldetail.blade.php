@@ -54,6 +54,15 @@
                                             @endforeach
                                         </select>
                                     </div>
+                                    <div class="col-md-6">
+                                        <label for="d_machine" class="form-label">Machine</label>
+                                        <select id="d_machine" class="form-control" disabled>
+                                            <option value="">Select machine</option>
+                                            @foreach (\App\Models\Machine::orderBy('name_machine')->get() as $m)
+                                                <option value="{{ $m->id_machine }}">{{ $m->name_machine }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
                                     <!-- Row 3 -->
                                     <div class="col-md-6">
@@ -84,6 +93,54 @@
                                             <option value="in_progress">In Progress</option>
                                             <option value="dispatched">Dispatched</option>
                                             <option value="closed">Closed</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="d_type_saibo" class="form-label">Type Saibo</label>
+                                        <select id="d_type_saibo" class="form-control" disabled>
+                                            <option value="">Select type</option>
+                                            <option value="baru">Baru</option>
+                                            <option value="berulang">Berulang</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="d_classification" class="form-label">Classification</label>
+                                        <select id="d_classification" class="form-control" disabled>
+                                            <option value="">Select classification</option>
+                                            <option value="konst">Konst</option>
+                                            <option value="komp">Komp</option>
+                                            <option value="model">Model</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="d_seksi_in_charge" class="form-label">Seksi In Charge</label>
+                                        <select id="d_seksi_in_charge" class="form-control" disabled>
+                                            <option value="">Select seksi</option>
+                                            @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
+                                                <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="d_pic" class="form-label">PIC</label>
+                                        <select id="d_pic" class="form-control" disabled>
+                                            <option value="">Select PIC</option>
+                                            @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
+                                                <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="d_hour" class="form-label">Hour</label>
+                                        <input type="number" id="d_hour" class="form-control" min="0" max="255" placeholder="Hour" disabled>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="d_stage" class="form-label">Stage</label>
+                                        <select id="d_stage" class="form-control" disabled>
+                                            <option value="">Select stage</option>
+                                            @foreach (['MFG', 'KS', 'KD', 'SK', 'T0', 'T1', 'T2', 'T3', 'BUYOFF', 'LT', 'HOMELINE'] as $st)
+                                                <option value="{{ $st }}">{{ $st }}</option>
+                                            @endforeach
                                         </select>
                                     </div>
 

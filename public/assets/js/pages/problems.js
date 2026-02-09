@@ -780,6 +780,14 @@
                 var curative = $("#p_curative").val().trim();
                 var preventive = $("#p_preventive").val();
 
+                var machineId = $("#p_machine").val();
+                var typeSaibo = $("#p_type_saibo").val();
+                var classification = $("#p_classification").val();
+                var stage = $("#p_stage").val();
+                var seksiInCharge = $("#p_seksi_in_charge").val();
+                var pic = $("#p_pic").val();
+                var hour = $("#p_hour").val();
+
                 var formData = new FormData();
 
                 // Append Dropzone files
@@ -957,6 +965,13 @@
                 formData.append("cause", cause);
                 formData.append("curative", curative);
                 formData.append("preventive", preventive);
+                if (machineId) formData.append("id_machine", machineId);
+                if (typeSaibo) formData.append("type_saibo", typeSaibo);
+                if (classification) formData.append("classification", classification);
+                if (stage) formData.append("stage", stage);
+                if (seksiInCharge) formData.append("id_seksi_in_charge", seksiInCharge);
+                if (pic) formData.append("id_pic", pic);
+                if (hour) formData.append("hour", hour);
 
                 var $btn = $("#saveProblem");
                 $btn.prop("disabled", true);
@@ -1118,6 +1133,13 @@
 
             $("#d_item").val(row.id_item || "");
             $("#d_location").val(row.id_location || "");
+            $("#d_machine").val(row.id_machine || "");
+            $("#d_type_saibo").val(row.type_saibo || "");
+            $("#d_classification").val(row.classification || "");
+            $("#d_stage").val(row.stage || "");
+            $("#d_seksi_in_charge").val(row.id_seksi_in_charge || "");
+            $("#d_pic").val(row.id_pic || "");
+            $("#d_hour").val(row.hour || "");
             $("#d_type").val(row.raw_type || "manufacturing");
             $("#d_status").val(row.status || "in_progress");
             $("#d_reporter").val(row.reporter || "-");
@@ -1142,7 +1164,7 @@
             $("#btn-save-problem").data("id", id).addClass("d-none");
             $("#btn-edit-problem").removeClass("d-none");
             $(
-                "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
+                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
             ).prop("disabled", true);
 
             // Generate carousel for attachments
@@ -1416,7 +1438,7 @@
             $(this).addClass("d-none");
             $("#btn-save-problem").removeClass("d-none");
             $(
-                "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
+                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
             ).prop("disabled", false);
 
             var type = $("#d_type").val();
@@ -1443,6 +1465,13 @@
                 id_kanban: $("#d_kanban").val(),
                 id_item: $("#d_item").val(),
                 id_location: $("#d_location").val(),
+                id_machine: $("#d_machine").val(),
+                type_saibo: $("#d_type_saibo").val(),
+                classification: $("#d_classification").val(),
+                stage: $("#d_stage").val(),
+                id_seksi_in_charge: $("#d_seksi_in_charge").val(),
+                id_pic: $("#d_pic").val(),
+                hour: $("#d_hour").val(),
                 type: $("#d_type").val(),
                 status: $("#d_status").val(),
                 problem: $("#d_problem").val(),
@@ -1493,7 +1522,7 @@
 
                     // Disable fields and reset buttons
                     $(
-                        "#d_project, #d_kanban, #d_item, #d_location, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
+                        "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_seksi_in_charge, #d_pic, #d_hour, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
                     ).prop("disabled", true);
                     $("#d_group_code").val(
                         data.group_code || $("#d_group_code").val(),

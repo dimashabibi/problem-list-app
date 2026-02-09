@@ -7,6 +7,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\UserAdminController;
+use App\Http\Controllers\MachineController;
 use App\Http\Controllers\Auth\LoginController;
 
 use App\Http\Controllers\DashboardController;
@@ -80,4 +81,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/problems/{id}/export', [ProblemController::class, 'export'])->name('problems.export');
     Route::post('/update-status/{id}', [ProblemController::class, 'updateStatus']);
     Route::delete('/problems/{id}', [ProblemController::class, 'destroy'])->name('problems.destroy');
+
+    Route::get('/admin/machines', [MachineController::class, 'index'])->name('machines.index');
+    Route::get('/machines/list', [MachineController::class, 'list'])->name('machines.list');
+    Route::post('/machines/store', [MachineController::class, 'store'])->name('machines.store');
+    Route::put('/machines/{id}', [MachineController::class, 'update'])->name('machines.update');
+    Route::delete('/machines/{id}', [MachineController::class, 'destroy'])->name('machines.destroy');
 });
