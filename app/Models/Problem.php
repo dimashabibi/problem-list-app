@@ -77,6 +77,16 @@ class Problem extends Model
         return $this->belongsTo(Location::class, 'id_pic', 'id_location');
     }
 
+    public function curatives()
+    {
+        return $this->hasMany(Curative::class, 'id_problem', 'id_problem');
+    }
+
+    public function preventives()
+    {
+        return $this->hasMany(Preventive::class, 'id_problem', 'id_problem');
+    }
+
     public function reporter()
     {
         return $this->belongsTo(User::class, 'id_user', 'id_user');

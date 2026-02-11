@@ -1438,7 +1438,7 @@
             $(this).addClass("d-none");
             $("#btn-save-problem").removeClass("d-none");
             $(
-                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
+                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_seksi_in_charge, #d_pic, #d_hour, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
             ).prop("disabled", false);
 
             var type = $("#d_type").val();

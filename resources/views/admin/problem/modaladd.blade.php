@@ -8,7 +8,7 @@
             <div class="modal-body">
                 <form id="problemForm" enctype="multipart/form-data">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label class="form-label">Project</label>
                                 <div class="input-group">
@@ -214,13 +214,13 @@
                                 <textarea class="form-control" id="p_problem" rows="2" required></textarea>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label class="form-label">Cause</label>
                                 <textarea class="form-control" id="p_cause" rows="2" required></textarea>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label class="form-label">Curative</label>
                                 <textarea class="form-control" id="p_curative" rows="2" required></textarea>
