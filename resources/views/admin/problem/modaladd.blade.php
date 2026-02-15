@@ -127,24 +127,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">PIC</label>
-                                <select class="form-control" id="p_pic">
-                                    <option value="">Select PIC</option>
-                                    @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
-                                        <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Hour</label>
-                                <input type="number" class="form-control" id="p_hour" min="0"
-                                    max="255" placeholder="Hour">
-                            </div>
-                        </div>
+                       
                         <div class="col-md-12">
                             <div class="mb-3">
                                 <label class="form-label d-block">Type</label>

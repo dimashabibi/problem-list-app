@@ -832,8 +832,7 @@
                 var classification = $("#p_classification").val();
                 var stage = $("#p_stage").val();
                 var seksiInCharge = $("#p_seksi_in_charge").val();
-                var pic = $("#p_pic").val();
-                var hour = $("#p_hour").val();
+                
 
                 var formData = new FormData();
 
@@ -1024,17 +1023,14 @@
                 preventives.forEach(function(p) {
                     formData.append('preventive_actions[]', p);
                 });
-                // Legacy fields populated with joined strings
-                formData.append("curative", curatives.join('\n'));
-                formData.append("preventive", preventives.join('\n'));
+                
 
                 if (machineId) formData.append("id_machine", machineId);
                 if (typeSaibo) formData.append("type_saibo", typeSaibo);
                 if (classification) formData.append("classification", classification);
                 if (stage) formData.append("stage", stage);
                 if (seksiInCharge) formData.append("id_seksi_in_charge", seksiInCharge);
-                if (pic) formData.append("id_pic", pic);
-                if (hour) formData.append("hour", hour);
+                
 
                 var $btn = $("#saveProblem");
                 $btn.prop("disabled", true);
@@ -1201,8 +1197,7 @@
             $("#d_classification").val(row.classification || "");
             $("#d_stage").val(row.stage || "");
             $("#d_seksi_in_charge").val(row.id_seksi_in_charge || "");
-            $("#d_pic").val(row.id_pic || "");
-            $("#d_hour").val(row.hour || "");
+            
             $("#d_type").val(row.raw_type || "manufacturing");
             $("#d_status").val(row.status || "in_progress");
             $("#d_reporter").val(row.reporter || "-");
@@ -1213,8 +1208,8 @@
             );
             $("#d_problem").val(row.problem || "");
             $("#d_cause").val(row.cause || "");
-            $("#d_curative").val(row.curative || "");
-            $("#d_preventive").val(row.preventive || "");
+            $("#d_curative").val("");
+            $("#d_preventive").val("");
 
             // Populate Dynamic Lists for Detail Modal
             $("#d_curative_container").empty();
@@ -1227,15 +1222,6 @@
                     $row.find('.d-remove-row-btn').addClass('d-none');
                     $("#d_curative_container").append($row);
                 });
-            } else {
-                 // Fallback if no array data but legacy text exists
-                 var val = row.curative || "";
-                 if(val) {
-                     var $row = $("#d_curative_template").children().clone();
-                     $row.find('input[name="curative_actions[]"]').val(val).prop('disabled', true);
-                     $row.find('.d-remove-row-btn').addClass('d-none');
-                     $("#d_curative_container").append($row);
-                 }
             }
 
             $("#d_preventive_container").empty();
@@ -1246,14 +1232,6 @@
                     $row.find('.d-remove-row-btn').addClass('d-none');
                     $("#d_preventive_container").append($row);
                 });
-            } else {
-                 var val = row.preventive || "";
-                 if(val) {
-                     var $row = $("#d_preventive_template").children().clone();
-                     $row.find('input[name="preventive_actions[]"]').val(val).prop('disabled', true);
-                     $row.find('.d-remove-row-btn').addClass('d-none');
-                     $("#d_preventive_container").append($row);
-                 }
             }
 
             // Group Code
@@ -1278,8 +1256,6 @@
                 row.attachments.length > 0
             ) {
                 attachments = row.attachments;
-            } else if (row.attachment) {
-                attachments = [row.attachment]; // Treat single as array
             }
 
             var carouselHtml = "";
@@ -1541,7 +1517,7 @@
             $(this).addClass("d-none");
             $("#btn-save-problem").removeClass("d-none");
             $(
-                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_seksi_in_charge, #d_pic, #d_hour, #d_type, #d_problem, #d_cause, #d_status",
+                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_seksi_in_charge, #d_type, #d_problem, #d_cause, #d_status",
             ).prop("disabled", false);
 
             // Enable dynamic lists
@@ -1612,8 +1588,7 @@
                 classification: $("#d_classification").val(),
                 stage: $("#d_stage").val(),
                 id_seksi_in_charge: $("#d_seksi_in_charge").val(),
-                id_pic: $("#d_pic").val(),
-                hour: $("#d_hour").val(),
+                
                 type: $("#d_type").val(),
                 status: $("#d_status").val(),
                 problem: $("#d_problem").val(),
@@ -1668,7 +1643,7 @@
 
                     // Disable fields and reset buttons
                     $(
-                        "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_seksi_in_charge, #d_pic, #d_hour, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
+                        "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_seksi_in_charge, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
                     ).prop("disabled", true);
                     $("#d_group_code").val(
                         data.group_code || $("#d_group_code").val(),

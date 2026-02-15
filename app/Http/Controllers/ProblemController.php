@@ -9,12 +9,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Conditional;
 
 class ProblemController extends Controller
 {
@@ -31,7 +33,7 @@ class ProblemController extends Controller
     public function list(Request $request)
     {
         $q = Problem::query()
-            ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine', 'seksiInCharge', 'pic', 'curatives.pic', 'preventives'])
+            ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine', 'seksiInCharge', 'curatives.pic', 'preventives'])
             ->orderBy('id_problem', 'desc');
         if ($request->filled('item_id')) $q->where('id_item', $request->integer('item_id'));
         if ($request->filled('project_id')) $q->where('id_project', $request->integer('project_id'));
@@ -59,11 +61,8 @@ class ProblemController extends Controller
                 'group_code_norm' => $p->group_code_norm,
                 'problem' => $p->problem,
                 'cause' => $p->cause,
-                'curative' => $p->curative,
-                'preventive' => $p->preventive,
                 'curatives' => $p->curatives,
                 'preventives' => $p->preventives,
-                'attachment' => $p->attachment,
                 'attachments' => $p->attachments->map(fn($a) => $a->file_path)->toArray(),
                 'status' => $p->status ?? 'dispatched', // Fallback for existing null records
                 'reporter' => $p->reporter?->fullname ?? $p->reporter?->username,
@@ -73,8 +72,6 @@ class ProblemController extends Controller
                 'classification' => $p->classification,
                 'stage' => $p->stage,
                 'id_seksi_in_charge' => $p->id_seksi_in_charge,
-                'id_pic' => $p->id_pic,
-                'hour' => $p->hour,
             ];
         }));
     }
@@ -158,8 +155,12 @@ class ProblemController extends Controller
             'type' => 'required|in:manufacturing,ks,kd,sk,kentokai,buyoff',
             'problem' => 'required|string',
             'cause' => 'nullable|string',
-            'curative' => 'nullable|string',
-            'preventive' => 'nullable|string',
+            'curatives' => 'nullable|array',
+            'curatives.*.curative' => 'nullable|string',
+            'curatives.*.id_pic' => 'nullable|integer|exists:locations,id_location',
+            'curatives.*.hour' => 'nullable|integer',
+            'preventives' => 'nullable|array',
+            'preventives.*.preventive' => 'nullable|string',
             'curative_actions' => 'nullable|array',
             'curative_actions.*' => 'string|nullable',
             'curative_pics' => 'nullable|array',
@@ -240,9 +241,6 @@ class ProblemController extends Controller
             foreach ($request->file('attachment') as $file) {
                 $path = $file->store('attachments', 'public');
                 $attachmentPaths[] = $path;
-                if (!$mainAttachmentPath) {
-                    $mainAttachmentPath = $path;
-                }
             }
         }
 
@@ -296,55 +294,77 @@ class ProblemController extends Controller
             'status' => $request->input('status'),
             'problem' => $request->input('problem'),
             'cause' => $request->input('cause'),
-            'curative' => $request->input('curative'),
-            'preventive' => $request->input('preventive'),
-            'attachment' => $mainAttachmentPath,
             'status' => 'in_progress',
             'id_user' => Auth::id() ?? 1,
             'group_code' => $groupCode,
             'group_code_norm' => $groupCodeNorm,
             'id_seksi_in_charge' => $request->input('id_seksi_in_charge'),
-            'id_pic' => $request->input('id_pic'),
-            'hour' => $request->input('hour'),
         ]);
 
-        $problem = Problem::create($problemData);
+        DB::transaction(function () use ($problemData, $attachmentPaths, $request) {
+            $problem = Problem::create($problemData);
 
-        // Store Curatives
-        $curativeActions = $request->input('curative_actions', []);
-        $curativePics = $request->input('curative_pics', []);
-        $curativeHours = $request->input('curative_hours', []);
+            // Normalize curatives payload (support both formats)
+            $curativesNested = $request->input('curatives', []);
+            $curativeActions = $request->input('curative_actions', []);
+            $curativePics = $request->input('curative_pics', []);
+            $curativeHours = $request->input('curative_hours', []);
 
-        if (is_array($curativeActions)) {
-            foreach ($curativeActions as $index => $action) {
-                if (empty($action)) continue;
-                \App\Models\Curative::create([
-                    'id_problem' => $problem->id_problem,
-                    'curative' => $action,
-                    'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
-                    'hour' => !empty($curativeHours[$index]) ? $curativeHours[$index] : null,
+            if (is_array($curativesNested) && count($curativesNested) > 0) {
+                foreach ($curativesNested as $c) {
+                    $text = isset($c['curative']) ? trim((string) $c['curative']) : '';
+                    if ($text === '') continue;
+                    \App\Models\Curative::create([
+                        'id_problem' => $problem->id_problem,
+                        'curative' => $text,
+                        'id_pic' => !empty($c['id_pic']) ? $c['id_pic'] : null,
+                        'hour' => isset($c['hour']) && $c['hour'] !== '' ? (int) $c['hour'] : null,
+                    ]);
+                }
+            } elseif (is_array($curativeActions)) {
+                foreach ($curativeActions as $index => $action) {
+                    $text = trim((string) $action);
+                    if ($text === '') continue;
+                    \App\Models\Curative::create([
+                        'id_problem' => $problem->id_problem,
+                        'curative' => $text,
+                        'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
+                        'hour' => !empty($curativeHours[$index]) ? (int) $curativeHours[$index] : null,
+                    ]);
+                }
+            }
+
+            // Normalize preventives payload (support both formats)
+            $preventivesNested = $request->input('preventives', []);
+            $preventiveActions = $request->input('preventive_actions', []);
+
+            if (is_array($preventivesNested) && count($preventivesNested) > 0) {
+                foreach ($preventivesNested as $p) {
+                    $text = isset($p['preventive']) ? trim((string) $p['preventive']) : '';
+                    if ($text === '') continue;
+                    \App\Models\Preventive::create([
+                        'id_problem' => $problem->id_problem,
+                        'preventive' => $text,
+                    ]);
+                }
+            } elseif (is_array($preventiveActions)) {
+                foreach ($preventiveActions as $action) {
+                    $text = trim((string) $action);
+                    if ($text === '') continue;
+                    \App\Models\Preventive::create([
+                        'id_problem' => $problem->id_problem,
+                        'preventive' => $text,
+                    ]);
+                }
+            }
+
+            foreach ($attachmentPaths as $path) {
+                \App\Models\ProblemAttachment::create([
+                    'problem_id' => $problem->id_problem,
+                    'file_path' => $path
                 ]);
             }
-        }
-
-        // Store Preventives
-        $preventiveActions = $request->input('preventive_actions', []);
-        if (is_array($preventiveActions)) {
-            foreach ($preventiveActions as $action) {
-                if (empty($action)) continue;
-                \App\Models\Preventive::create([
-                    'id_problem' => $problem->id_problem,
-                    'preventive' => $action,
-                ]);
-            }
-        }
-
-        foreach ($attachmentPaths as $path) {
-            \App\Models\ProblemAttachment::create([
-                'problem_id' => $problem->id_problem,
-                'file_path' => $path
-            ]);
-        }
+        });
 
         return response()->json(['success' => true]);
     }
@@ -362,8 +382,22 @@ class ProblemController extends Controller
             'status' => 'required|in:dispatched,in_progress,closed',
             'problem' => 'required|string',
             'cause' => 'nullable|string',
-            'curative' => 'nullable|string',
-            'preventive' => 'nullable|string',
+            // New nested array format
+            'curatives' => 'nullable|array',
+            'curatives.*.curative' => 'nullable|string',
+            'curatives.*.id_pic' => 'nullable|integer|exists:locations,id_location',
+            'curatives.*.hour' => 'nullable|integer',
+            'preventives' => 'nullable|array',
+            'preventives.*.preventive' => 'nullable|string',
+            // Legacy flat arrays (supported for compatibility)
+            'curative_actions' => 'nullable|array',
+            'curative_actions.*' => 'string|nullable',
+            'curative_pics' => 'nullable|array',
+            'curative_pics.*' => 'nullable|integer|exists:locations,id_location',
+            'curative_hours' => 'nullable|array',
+            'curative_hours.*' => 'nullable|integer',
+            'preventive_actions' => 'nullable|array',
+            'preventive_actions.*' => 'string|nullable',
         ];
 
         $validated = $request->validate($rules);
@@ -377,8 +411,6 @@ class ProblemController extends Controller
             'status' => $request->input('status'),
             'problem' => $request->input('problem'),
             'cause' => $request->input('cause'),
-            'curative' => $request->input('curative'),
-            'preventive' => $request->input('preventive'),
             'id_machine' => $request->input('id_machine'),
             'type_saibo' => $request->input('type_saibo'),
             'classification' => $request->input('classification'),
@@ -391,41 +423,67 @@ class ProblemController extends Controller
             $updateData['group_code_norm'] = strtoupper($groupCode);
         }
 
-        $problem->update($updateData);
+        DB::transaction(function () use ($problem, $updateData, $request, $id) {
+            $problem->update($updateData);
 
-        // Update Curatives
-        // First delete existing ones to handle removals/updates easily
-        \App\Models\Curative::where('id_problem', $id)->delete();
+            // Reset curatives/preventives
+            \App\Models\Curative::where('id_problem', $id)->delete();
+            \App\Models\Preventive::where('id_problem', $id)->delete();
 
-        $curativeActions = $request->input('curative_actions', []);
-        $curativePics = $request->input('curative_pics', []);
-        $curativeHours = $request->input('curative_hours', []);
+            // Normalize curatives payload (support both formats)
+            $curativesNested = $request->input('curatives', []);
+            $curativeActions = $request->input('curative_actions', []);
+            $curativePics = $request->input('curative_pics', []);
+            $curativeHours = $request->input('curative_hours', []);
 
-        if (is_array($curativeActions)) {
-            foreach ($curativeActions as $index => $action) {
-                if (empty($action)) continue;
-                \App\Models\Curative::create([
-                    'id_problem' => $problem->id_problem,
-                    'curative' => $action,
-                    'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
-                    'hour' => !empty($curativeHours[$index]) ? $curativeHours[$index] : null,
-                ]);
+            if (is_array($curativesNested) && count($curativesNested) > 0) {
+                foreach ($curativesNested as $c) {
+                    $text = isset($c['curative']) ? trim((string) $c['curative']) : '';
+                    if ($text === '') continue;
+                    \App\Models\Curative::create([
+                        'id_problem' => $problem->id_problem,
+                        'curative' => $text,
+                        'id_pic' => !empty($c['id_pic']) ? $c['id_pic'] : null,
+                        'hour' => isset($c['hour']) && $c['hour'] !== '' ? (int) $c['hour'] : null,
+                    ]);
+                }
+            } elseif (is_array($curativeActions)) {
+                foreach ($curativeActions as $index => $action) {
+                    $text = trim((string) $action);
+                    if ($text === '') continue;
+                    \App\Models\Curative::create([
+                        'id_problem' => $problem->id_problem,
+                        'curative' => $text,
+                        'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
+                        'hour' => !empty($curativeHours[$index]) ? (int) $curativeHours[$index] : null,
+                    ]);
+                }
             }
-        }
 
-        // Update Preventives
-        \App\Models\Preventive::where('id_problem', $id)->delete();
+            // Normalize preventives payload (support both formats)
+            $preventivesNested = $request->input('preventives', []);
+            $preventiveActions = $request->input('preventive_actions', []);
 
-        $preventiveActions = $request->input('preventive_actions', []);
-        if (is_array($preventiveActions)) {
-            foreach ($preventiveActions as $action) {
-                if (empty($action)) continue;
-                \App\Models\Preventive::create([
-                    'id_problem' => $problem->id_problem,
-                    'preventive' => $action,
-                ]);
+            if (is_array($preventivesNested) && count($preventivesNested) > 0) {
+                foreach ($preventivesNested as $p) {
+                    $text = isset($p['preventive']) ? trim((string) $p['preventive']) : '';
+                    if ($text === '') continue;
+                    \App\Models\Preventive::create([
+                        'id_problem' => $problem->id_problem,
+                        'preventive' => $text,
+                    ]);
+                }
+            } elseif (is_array($preventiveActions)) {
+                foreach ($preventiveActions as $action) {
+                    $text = trim((string) $action);
+                    if ($text === '') continue;
+                    \App\Models\Preventive::create([
+                        'id_problem' => $problem->id_problem,
+                        'preventive' => $text,
+                    ]);
+                }
             }
-        }
+        });
 
         return response()->json(['success' => true]);
     }
@@ -436,21 +494,12 @@ class ProblemController extends Controller
 
         // Delete main attachment if exists (though it should be in attachments table too if created new)
         // But for old records, we check attachment column
-        if ($p->attachment) {
-            try {
-                Storage::disk('public')->delete($p->attachment);
-            } catch (\Throwable $e) {
-            }
-        }
-
         // Delete all related attachments
         foreach ($p->attachments as $attachment) {
             try {
                 // Check if it is different from main attachment to avoid double delete attempt? 
                 // Storage delete doesn't throw if file missing usually, or we catch it.
-                if ($attachment->file_path !== $p->attachment) {
-                    Storage::disk('public')->delete($attachment->file_path);
-                }
+                Storage::disk('public')->delete($attachment->file_path);
             } catch (\Throwable $e) {
             }
         }
@@ -533,7 +582,7 @@ class ProblemController extends Controller
             return response()->json(['message' => 'Type is required'], 400);
         }
 
-        $query = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine'])
+        $query = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine', 'curatives', 'preventives'])
             ->where('type', $type);
 
         if ($groupCode) {
@@ -606,6 +655,12 @@ class ProblemController extends Controller
         ];
         $boldTextStyle = [
             'font' => ['bold' => true],
+        ];
+
+        $rankStyle = [
+            'font' => ['bold' => true, 'size' => 36],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFF00']],
         ];
 
         // For Manufacturing, we currently only support single problem export (Form format)
@@ -745,21 +800,7 @@ class ProblemController extends Controller
             }
         }
 
-        if (!$hasDetailImage && $problem->attachment) {
-            $imagePath = storage_path('app/public/' . $problem->attachment);
-            if (file_exists($imagePath)) {
-                $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
-                $drawing->setName('Attachment');
-                $drawing->setDescription('Problem Attachment');
-                $drawing->setPath($imagePath);
-                $drawing->setCoordinates('B12');
-                $drawing->setHeight(250);
-                $drawing->setOffsetX(10);
-                $drawing->setOffsetY(10);
-                $drawing->setWorksheet($sheet);
-                $hasDetailImage = true;
-            }
-        }
+        
 
         if (!$hasDetailImage) {
             $sheet->setCellValue('B12', 'No Attachment');
@@ -999,6 +1040,34 @@ class ProblemController extends Controller
         $sheet->getStyle('S61')->applyFromArray($blueHeaderStyle);
         $sheet->getStyle('S61')->applyFromArray($boldTextStyle);
         $sheet->mergeCells('S62:U66');
+        $sheet->setCellValue('S62', '=IF(AH44>1000000,"A",IF(AH44>=500000,"B",IF(AH44>=300000,"C","D")))');
+        $sheet->getStyle('S62')->applyFromArray($rankStyle);
+
+        // CONDITIONAL FORMATTING RANK
+        $rankRange = 'S62:U66';
+        $makeCond = function (string $val, string $rgb) {
+            $cond = new Conditional();
+            $cond->setConditionType(Conditional::CONDITION_CONTAINSTEXT);
+            $cond->setOperatorType(Conditional::OPERATOR_CONTAINSTEXT);
+            $cond->setText($val);
+
+            $cond->getStyle()->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setRGB($rgb);
+
+            // optional: biar tulisan kebaca
+            $cond->getStyle()->getFont()->setBold(true);
+
+            return $cond;
+        };
+
+        $condA = $makeCond('A', 'FF0000'); // Merah
+        $condB = $makeCond('B', '8B4513'); // Coklat
+        $condC = $makeCond('C', 'FFFF00'); // Kuning
+        $condD = $makeCond('D', '00B050'); // Hijau
+
+        $sheet->getStyle($rankRange)->setConditionalStyles([$condA, $condB, $condC, $condD]);
+
 
         $sheet->mergeCells('V61:Y61');
         $sheet->setCellValue('V61', 'Klasifikasi');
@@ -1260,11 +1329,6 @@ class ProblemController extends Controller
                         $sheet->setCellValue("G{$row}", $curative->pic?->location_name ?? '-');
                     }
                 }
-            } elseif (!empty($p->curative)) {
-                // Fallback legacy
-                $sheet->setCellValue("E{$r1}", "1");
-                $sheet->setCellValue("F{$r1}", $p->curative);
-                $sheet->setCellValue("G{$r1}", $p->pic?->location_name ?? '-');
             }
 
             // Styles
@@ -1302,20 +1366,6 @@ class ProblemController extends Controller
                         // Limit to 1 image for now to fit nicely? Or just let them stack.
                         break; // Only show 1 image for now in the block
                     }
-                }
-            } elseif (!empty($p->attachment)) {
-                $imagePath = storage_path('app/public/' . ltrim($p->attachment, '/'));
-                if (file_exists($imagePath) && @getimagesize($imagePath)) {
-                    $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
-                    $drawing->setName('Attachment');
-                    $drawing->setDescription('Problem Attachment');
-                    $drawing->setPath($imagePath);
-                    $drawing->setCoordinates($imageAnchor);
-                    $drawing->setHeight(90);
-                    $drawing->setOffsetX(5);
-                    $drawing->setOffsetY(5);
-                    $drawing->setWorksheet($sheet);
-                    $hasImage = true;
                 }
             }
 
@@ -1513,7 +1563,7 @@ class ProblemController extends Controller
 
             $sheet->setCellValue("H{$r1}", optional($p->created_at)->format('d-m-Y'));
             $sheet->setCellValue("J{$r1}", $p->problem ?? '');
-            $sheet->setCellValue("P{$r1}", $p->curative ?? '');
+            $sheet->setCellValue("P{$r1}", $p->curatives->pluck('curative')->implode("\n"));
             $sheet->setCellValue("T{$r1}", strtoupper($p->status ?? ''));
             $sheet->setCellValue("W{$r1}", $p->note ?? '');
 
@@ -1563,24 +1613,7 @@ class ProblemController extends Controller
                 }
             }
 
-            // Fallback legacy
-            if (!$hasImage && !empty($p->attachment)) {
-                // Ensure path is correct. $p->attachment is relative to public disk, e.g. "attachments/xyz.jpg"
-                $imagePath = storage_path('app/public/' . ltrim($p->attachment, '/'));
-
-                if (file_exists($imagePath)) {
-                    $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
-                    $drawing->setName('Attachment');
-                    $drawing->setDescription('Problem Attachment');
-                    $drawing->setPath($imagePath);
-                    $drawing->setCoordinates("W{$r1}");
-                    $drawing->setHeight(120);
-                    $drawing->setOffsetX(5);
-                    $drawing->setOffsetY(5);
-                    $drawing->setWorksheet($sheet);
-                    $hasImage = true;
-                }
-            }
+            // No legacy fallback; rely solely on attachments relation
 
             if (!$hasImage) {
                 $sheet->setCellValue("W{$r1}", "No Attachment");

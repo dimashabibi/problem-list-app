@@ -24,9 +24,6 @@ class Problem extends Model
         'type_saibo',
         'problem',
         'cause',
-        'curative',
-        'preventive',
-        'attachment',
         'status',
         'id_user',
         'group_code',
@@ -34,8 +31,6 @@ class Problem extends Model
         'classification',
         'stage',
         'id_seksi_in_charge',
-        'id_pic',
-        'hour',
     ];
 
     public function project()
@@ -70,11 +65,6 @@ class Problem extends Model
     public function seksiInCharge()
     {
         return $this->belongsTo(Location::class, 'id_seksi_in_charge', 'id_location');
-    }
-
-    public function pic()
-    {
-        return $this->belongsTo(Location::class, 'id_pic', 'id_location');
     }
 
     public function curatives()
