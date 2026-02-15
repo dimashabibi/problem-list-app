@@ -31,7 +31,7 @@ class ProblemController extends Controller
     public function list(Request $request)
     {
         $q = Problem::query()
-            ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine', 'seksiInCharge', 'pic'])
+            ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine', 'seksiInCharge', 'pic', 'curatives.pic', 'preventives'])
             ->orderBy('id_problem', 'desc');
         if ($request->filled('item_id')) $q->where('id_item', $request->integer('item_id'));
         if ($request->filled('project_id')) $q->where('id_project', $request->integer('project_id'));
@@ -61,6 +61,8 @@ class ProblemController extends Controller
                 'cause' => $p->cause,
                 'curative' => $p->curative,
                 'preventive' => $p->preventive,
+                'curatives' => $p->curatives,
+                'preventives' => $p->preventives,
                 'attachment' => $p->attachment,
                 'attachments' => $p->attachments->map(fn($a) => $a->file_path)->toArray(),
                 'status' => $p->status ?? 'dispatched', // Fallback for existing null records
@@ -158,6 +160,14 @@ class ProblemController extends Controller
             'cause' => 'nullable|string',
             'curative' => 'nullable|string',
             'preventive' => 'nullable|string',
+            'curative_actions' => 'nullable|array',
+            'curative_actions.*' => 'string|nullable',
+            'curative_pics' => 'nullable|array',
+            'curative_pics.*' => 'nullable|integer|exists:locations,id_location',
+            'curative_hours' => 'nullable|array',
+            'curative_hours.*' => 'nullable|integer',
+            'preventive_actions' => 'nullable|array',
+            'preventive_actions.*' => 'string|nullable',
             'attachment' => 'nullable|array',
             'attachment.*' => 'image|max:4096',
             'id_machine' => 'nullable|integer|exists:machines,id_machine',
@@ -300,6 +310,35 @@ class ProblemController extends Controller
 
         $problem = Problem::create($problemData);
 
+        // Store Curatives
+        $curativeActions = $request->input('curative_actions', []);
+        $curativePics = $request->input('curative_pics', []);
+        $curativeHours = $request->input('curative_hours', []);
+
+        if (is_array($curativeActions)) {
+            foreach ($curativeActions as $index => $action) {
+                if (empty($action)) continue;
+                \App\Models\Curative::create([
+                    'id_problem' => $problem->id_problem,
+                    'curative' => $action,
+                    'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
+                    'hour' => !empty($curativeHours[$index]) ? $curativeHours[$index] : null,
+                ]);
+            }
+        }
+
+        // Store Preventives
+        $preventiveActions = $request->input('preventive_actions', []);
+        if (is_array($preventiveActions)) {
+            foreach ($preventiveActions as $action) {
+                if (empty($action)) continue;
+                \App\Models\Preventive::create([
+                    'id_problem' => $problem->id_problem,
+                    'preventive' => $action,
+                ]);
+            }
+        }
+
         foreach ($attachmentPaths as $path) {
             \App\Models\ProblemAttachment::create([
                 'problem_id' => $problem->id_problem,
@@ -354,6 +393,40 @@ class ProblemController extends Controller
 
         $problem->update($updateData);
 
+        // Update Curatives
+        // First delete existing ones to handle removals/updates easily
+        \App\Models\Curative::where('id_problem', $id)->delete();
+
+        $curativeActions = $request->input('curative_actions', []);
+        $curativePics = $request->input('curative_pics', []);
+        $curativeHours = $request->input('curative_hours', []);
+
+        if (is_array($curativeActions)) {
+            foreach ($curativeActions as $index => $action) {
+                if (empty($action)) continue;
+                \App\Models\Curative::create([
+                    'id_problem' => $problem->id_problem,
+                    'curative' => $action,
+                    'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
+                    'hour' => !empty($curativeHours[$index]) ? $curativeHours[$index] : null,
+                ]);
+            }
+        }
+
+        // Update Preventives
+        \App\Models\Preventive::where('id_problem', $id)->delete();
+
+        $preventiveActions = $request->input('preventive_actions', []);
+        if (is_array($preventiveActions)) {
+            foreach ($preventiveActions as $action) {
+                if (empty($action)) continue;
+                \App\Models\Preventive::create([
+                    'id_problem' => $problem->id_problem,
+                    'preventive' => $action,
+                ]);
+            }
+        }
+
         return response()->json(['success' => true]);
     }
 
@@ -388,7 +461,7 @@ class ProblemController extends Controller
 
     public function export(Request $request, int $id)
     {
-        $problem = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine'])->find($id);
+        $problem = Problem::with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine', 'curatives.pic', 'preventives'])->find($id);
 
         if (!$problem) {
             return response()->json(['message' => 'Problem not found'], 404);
@@ -424,10 +497,7 @@ class ProblemController extends Controller
         return match (strtolower($type)) {
             'manufacturing' => $this->exportFormatManufacturing($problems, $fileName),
             'kentokai' => $this->exportFormatKentokai($problems, $fileName),
-            'ks' => $this->exportFormatKs($problems, $fileName),
-            'kd' => $this->exportFormatKd($problems, $fileName),
-            'sk' => $this->exportFormatSk($problems, $fileName),
-            'buyoff' => $this->exportFormatBuyoff($problems, $fileName),
+            'ks', 'kd', 'sk', 'buyoff' => $this->exportFormatCommon($problems, $fileName, $type),
             default => response()->json(['message' => "Export format for type '$type' not supported"], 400),
         };
     }
@@ -496,10 +566,7 @@ class ProblemController extends Controller
         return match (strtolower($type)) {
             'manufacturing' => $this->exportFormatManufacturing($problems, $fileName),
             'kentokai' => $this->exportFormatKentokai($problems, $fileName),
-            'ks' => $this->exportFormatKs($problems, $fileName),
-            'kd' => $this->exportFormatKd($problems, $fileName),
-            'sk' => $this->exportFormatSk($problems, $fileName),
-            'buyoff' => $this->exportFormatBuyoff($problems, $fileName),
+            'ks', 'kd', 'sk', 'buyoff' => $this->exportFormatCommon($problems, $fileName, $type),
             default => response()->json(['message' => "Export format for type '$type' not supported"], 400),
         };
     }
@@ -786,36 +853,30 @@ class ProblemController extends Controller
         $sheet->getStyle('C31')->applyFromArray($centerStyle);
         $sheet->getStyle('C31')->applyFromArray($boldTextStyle);
 
-        $sheet->mergeCells('C34:P34');
-        $sheet->setCellValue('C34', $problem->curative);
-        $sheet->mergeCells('C35:P35');
-        $sheet->mergeCells('C36:P36');
-        $sheet->mergeCells('C37:P37');
-        $sheet->mergeCells('C38:P38');
-        $sheet->mergeCells('C39:P39');
-        $sheet->mergeCells('C40:P40');
-        $sheet->mergeCells('C41:P41');
-        $sheet->mergeCells('C42:P42');
-        $sheet->mergeCells('C43:P43');
-        $sheet->mergeCells('C44:P44');
+        // Curative Data (Rows 34-44)
+        $curatives = $problem->curatives;
+        for ($i = 0; $i < 11; $i++) {
+            $row = 34 + $i;
+            $sheet->mergeCells("C{$row}:P{$row}");
+            if (isset($curatives[$i])) {
+                $sheet->setCellValue("C{$row}", $curatives[$i]->curative);
+            }
+        }
 
         // PIC rows
         $sheet->mergeCells('Q31:T33');
         $sheet->setCellValue('Q31', 'PIC');
         $sheet->getStyle('Q31')->applyFromArray($centerStyle);
         $sheet->getStyle('Q31')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('Q34:T34');
-        $sheet->setCellValue('Q34', $problem->pic?->location_name);
-        $sheet->mergeCells('Q35:T35');
-        $sheet->mergeCells('Q36:T36');
-        $sheet->mergeCells('Q37:T37');
-        $sheet->mergeCells('Q38:T38');
-        $sheet->mergeCells('Q39:T39');
-        $sheet->mergeCells('Q40:T40');
-        $sheet->mergeCells('Q41:T41');
-        $sheet->mergeCells('Q42:T42');
-        $sheet->mergeCells('Q43:T43');
-        $sheet->mergeCells('Q44:T44');
+
+        // PIC Data (Rows 34-44)
+        for ($i = 0; $i < 11; $i++) {
+            $row = 34 + $i;
+            $sheet->mergeCells("Q{$row}:T{$row}");
+            if (isset($curatives[$i]) && $curatives[$i]->pic) {
+                $sheet->setCellValue("Q{$row}", $curatives[$i]->pic->location_name);
+            }
+        }
 
         $sheet->mergeCells('U31:AF32');
         $sheet->setCellValue('U31', 'Tanggal');
@@ -847,23 +908,28 @@ class ProblemController extends Controller
         $sheet->setCellValue('AG31', 'Hour');
         $sheet->getStyle('AG31')->applyFromArray($centerStyle);
         $sheet->getStyle('AG31')->applyFromArray($boldTextStyle);
-        $sheet->setCellValue('AG34', $problem->hour);
+
+        for ($i = 0; $i < 11; $i++) {
+            $row = 34 + $i;
+            if (isset($curatives[$i]) && $curatives[$i]->pic) {
+                $sheet->setCellValue("AG{$row}", $curatives[$i]->hour);
+                $sheet->getStyle("AG{$row}")->getNumberFormat()->setFormatCode('0.00');
+            }
+        }
 
         $sheet->mergeCells('AH31:AI33');
-        $sheet->mergeCells('AH34:AI34');
-        $sheet->setCellValue('AH34', $problem->pic?->rate);
-        $sheet->getStyle('AH34')->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
-        $sheet->mergeCells('AH35:AI35');
-        $sheet->mergeCells('AH36:AI36');
-        $sheet->mergeCells('AH37:AI37');
-        $sheet->mergeCells('AH38:AI38');
-        $sheet->mergeCells('AH39:AI39');
-        $sheet->mergeCells('AH40:AI40');
-        $sheet->mergeCells('AH41:AI41');
-        $sheet->mergeCells('AH42:AI42');
-        $sheet->mergeCells('AH43:AI43');
+
+        for ($i = 0; $i < 11; $i++) {
+            $row = 34 + $i;
+            $sheet->mergeCells("AH{$row}:AI{$row}");
+            if (isset($curatives[$i]) && $curatives[$i]->pic) {
+                $sheet->setCellValue("AH{$row}", $curatives[$i]->pic->rate * $curatives[$i]->hour);
+                $sheet->getStyle("AH{$row}")->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
+            }
+        }
+
         $sheet->mergeCells('AH44:AI44');
-        $sheet->setCellValue('AH44', '=SUM(AH34:AI34)');
+        $sheet->setCellValue('AH44', '=SUM(AH34:AH43)');
         $sheet->getStyle('AH44')->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
         // End Kolom B
 
@@ -902,36 +968,31 @@ class ProblemController extends Controller
         $sheet->setCellValue('W47', 'Penanggulangan');
         $sheet->getStyle('W47')->applyFromArray($centerStyle);
         $sheet->getStyle('W47')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('W48:AG48');
-        $sheet->mergeCells('W49:AG49');
-        $sheet->mergeCells('W50:AG50');
-        $sheet->mergeCells('W51:AG51');
-        $sheet->mergeCells('W52:AG52');
-        $sheet->mergeCells('W53:AG53');
-        $sheet->mergeCells('W54:AG54');
-        $sheet->mergeCells('W55:AG55');
-        $sheet->mergeCells('W56:AG56');
-        $sheet->mergeCells('W57:AG57');
-        $sheet->mergeCells('W58:AG58');
-        $sheet->mergeCells('W59:AG59');
+        // Penanggulangan (Preventive) Data (Rows 48-59)
+        $preventives = $problem->preventives;
+        for ($i = 0; $i < 12; $i++) {
+            $row = 48 + $i;
+            $sheet->mergeCells("W{$row}:AG{$row}");
+            if (isset($preventives[$i])) {
+                $sheet->setCellValue("W{$row}", $preventives[$i]->preventive);
+            }
+        }
+
 
         // tanggal
         $sheet->mergeCells('AH47:AI47');
         $sheet->setCellValue('AH47', 'Tanggal');
         $sheet->getStyle('AH47')->applyFromArray($centerStyle);
         $sheet->getStyle('AH47')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('AH48:AI48');
-        $sheet->mergeCells('AH49:AI49');
-        $sheet->mergeCells('AH50:AI50');
-        $sheet->mergeCells('AH51:AI51');
-        $sheet->mergeCells('AH52:AI52');
-        $sheet->mergeCells('AH53:AI53');
-        $sheet->mergeCells('AH54:AI54');
-        $sheet->mergeCells('AH55:AI55');
-        $sheet->mergeCells('AH56:AI56');
-        $sheet->mergeCells('AH57:AI57');
-        $sheet->mergeCells('AH58:AI58');
-        $sheet->mergeCells('AH59:AI59');
+        // End Kolom C
+
+        for ($i = 0; $i < 12; $i++) {
+            $row = 48 + $i;
+            $sheet->mergeCells("AH{$row}:AI{$row}");
+            if (isset($preventives[$i])) {
+                $sheet->setCellValue("AH{$row}", $preventives[$i]->created_at ? $preventives[$i]->created_at->format('d-M-Y') : '');
+            }
+        }
 
         $sheet->mergeCells('S61:U61');
         $sheet->setCellValue('S61', 'Rank');
@@ -987,44 +1048,290 @@ class ProblemController extends Controller
 
         return $this->downloadSpreadsheet($spreadsheet, $fileName);
     }
+    // ===================================================================================================== EXPORT FORMAT MANUFACTURING END  =====================================================================================================
 
 
 
-    private function exportFormatKs($problems, $fileName)
+    // ===================================================================================================== EXPORT FORMAT COMMON (KS, KD, SK, BUYOFF) =====================================================================================================
+    private function exportFormatCommon($problems, $fileName, $type)
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('KS List');
-        $sheet->setCellValue('A1', 'KS List (Format Pending)');
+        $sheet->setTitle('Issue List');
+        $sheet->setShowGridlines(false);
+
+        $typeUpper = strtoupper($type);
+        $title = match (strtolower($type)) {
+            'ks' => 'PROBLEM KATAKENSA STATIK',
+            'kd' => 'PROBLEM KATAKENSA DINAMIK',
+            'sk' => 'PROBLEM SEIZO KUNREN',
+            'buyoff' => 'PROBLEM BUYOFF',
+            default => "PROBLEM {$typeUpper}"
+        };
+
+        // =======================
+        // Styles
+        // =======================
+        $titleStyle = [
+            'font' => ['bold' => true, 'size' => 22, 'fontname' => 'Berlin Sans FB Demi'],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+
+        $logoStyle = [
+            'font' => ['bold' => true, 'size' => 10],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'wrapText' => true,
+            ],
+        ];
+
+
+        $headerStyle = [
+            'font' => ['bold' => true],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D6F4ED']],
+            'borders' => [
+                'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+            ],
+        ];
+
+        $cellBorder = [
+            'borders' => [
+                'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+            ],
+        ];
+
+        $wrapTop = [
+            'alignment' => ['wrapText' => true, 'vertical' => Alignment::VERTICAL_TOP],
+        ];
+
+        $center = [
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+
+        $yellowHeader = [
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF19B']],
+            'font' => ['color' => ['rgb' => '000000'], 'bold' => true],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+
+        $problem = $problems->first();
+        if (!$problem) return null;
+
+        // =======================
+        // Column widths (approx)
+        // =======================
+        $sheet->getColumnDimension('A')->setWidth(2);   // MARGIN
+        $sheet->getColumnDimension('B')->setWidth(3);  // NO
+        $sheet->getColumnDimension('C')->setWidth(16);  // NAME
+        $sheet->getColumnDimension('D')->setWidth(28);  // FIELD
+        $sheet->getColumnDimension('E')->setWidth(3);  // FIELD
+        $sheet->getColumnDimension('F')->setWidth(38);  // FIELD
+        $sheet->getColumnDimension('G')->setWidth(17);  // FIELD  // TEMUAN
+        foreach (range('H', 'I') as $c) $sheet->getColumnDimension($c)->setWidth(9);
+        $sheet->getColumnDimension('J')->setWidth(28);  // COUNTERMEASURE
+        $sheet->getColumnDimension('K')->setWidth(7);  // KETERANGAN/IMAGE
+        $sheet->getRowDimension('10')->setRowHeight(30);  // KETERANGAN/IMAGE
+        foreach (range('1', '9') as $row) $sheet->getRowDimension($row)->setRowHeight(22);
+
+        $locationName = $problem->location?->location_name ?? '-';
+
+        // =======================
+        // Title / Top row
+        // =======================
+        $sheet->mergeCells('C1:D2');
+        $sheet->setCellValue("C1", "PT. Toyota Motor Mfg. Indonesia 
+        Die & Jig Creation Division");
+        $sheet->getStyle('C1')->applyFromArray($logoStyle);
+
+        $sheet->mergeCells('E1:H4');
+        $sheet->setCellValue("E1", $title);   //TITLE 
+        $sheet->getStyle('E1')->applyFromArray($titleStyle);
+
+
+        // Optional small labels (checked/prepared) like template
+        $sheet->setCellValue('C3', 'NO.FORM');
+        $sheet->getStyle('C3')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('D3', $problem->group_code);
+        $sheet->setCellValue('C4', 'DATE');
+        $sheet->getStyle('C4')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('D4', $problem->created_at->format('d-M-Y'));
+        $sheet->setCellValue('C5', 'KANBAN');
+        $sheet->getStyle('C5')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('D5', $problem->kanban?->kanban_name);
+        $sheet->setCellValue('C6', 'NO.PART');
+        $sheet->getStyle('C6')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('D6', $problem->kanban->part_number ?? '-');
+        $sheet->setCellValue('C7', 'PROCESS DIE');
+        $sheet->getStyle('C7')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('D7', '-');
+        $sheet->setCellValue('C8', 'PART NAME');
+        $sheet->getStyle('C8')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('D8', $problem->kanban->part_name ?? '-');
+        $sheet->setCellValue('C9', 'ENGINEER');
+        $sheet->getStyle('C9')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('D9', '-');
+
+        $sheet->mergeCells('E5:H9');
+        $sheet->setCellValue('E5', 'SKETCH :');
+        $sheet->getStyle('E5')->getAlignment()->setVertical(Alignment::VERTICAL_TOP)->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
+        $sheet->setCellValue('I2', 'DIE SIZE');
+        $sheet->getStyle('I2')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('J2', '');
+        $sheet->setCellValue('I3', 'WEIGHT');
+        $sheet->getStyle('I3')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('J3', '');
+        $sheet->setCellValue('I4', 'DH / SLD');
+        $sheet->getStyle('I4')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('J4', '');
+        $sheet->setCellValue('I5', 'TC / LM');
+        $sheet->getStyle('I5')->applyFromArray($yellowHeader);
+        $sheet->setCellValue('J5', '');
+
+
+        // =======================
+        // Table Headers
+        // =======================
+        $sheet->setCellValue('B10', 'NO');
+        $sheet->mergeCells('C10:D10');
+        $sheet->setCellValue('C10', 'PROBLEM');
+        $sheet->getStyle('C10')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->mergeCells('E10:F10');
+        $sheet->setCellValue('E10', 'COUNTERMEASURE');
+        $sheet->getStyle('E10')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->setCellValue('G10', 'PIC.REPAIR');
+        $sheet->getStyle('G10')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->setCellValue('H10', 'PLAN');
+        $sheet->getStyle('H10')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->setCellValue('I10', 'ACTUAL');
+        $sheet->getStyle('I10')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->mergeCells('J10:K10');
+        $sheet->setCellValue('J10', 'AFTER REPAIR');
+        $sheet->getStyle('J10')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->getStyle('B10:K10')->applyFromArray($headerStyle);
+
+        // =======================
+        // Helper: build 1 block per issue (8 rows tall)
+        // =======================
+        $startRow = 11;
+        $blockHeight = 10; // rows 7-14, 15-22, dst.
+
+        foreach ($problems as $i => $p) {
+            $r1 = $startRow + ($i * $blockHeight);
+            $r2 = $r1 + ($blockHeight - 1);
+
+            $rowProblem = $r1 + 1;
+            $imageStart = $r1 + 2;
+            $imageEnd = $r2;
+
+
+            // Merge layout (mirip template)
+            $sheet->mergeCells("A{$r1}:A{$r2}");         // MARGIN
+            $sheet->mergeCells("B{$r1}:B{$r2}");              // NO
+            $sheet->mergeCells("C{$r1}:D{$rowProblem}");        // PROBLEM
+            $sheet->mergeCells("C{$imageStart}:D{$imageEnd}");
+
+            // Merge Image area J-K
+            $sheet->mergeCells("J{$r1}:K{$r2}");
+
+            // Row heights biar blok keliatan lega
+            for ($rr = $r1; $rr <= $r2; $rr++) {
+                $sheet->getRowDimension($rr)->setRowHeight(18);
+            }
+
+            // Fill values
+            $sheet->setCellValue("B{$r1}", $i + 1);
+
+            // Problem
+            $sheet->setCellValue("C{$r1}", $p->problem ?? '-');
+            $sheet->getStyle("C{$r1}")->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_CENTER)->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
+            // Curatives
+            $curatives = $p->curatives;
+            if ($curatives->count() > 0) {
+                foreach ($curatives as $idx => $curative) {
+                    if ($idx < $blockHeight) {
+                        $row = $r1 + $idx;
+                        $sheet->setCellValue("E{$row}", $idx + 1);
+                        $sheet->setCellValue("F{$row}", $curative->curative);
+                        $sheet->setCellValue("G{$row}", $curative->pic?->location_name ?? '-');
+                    }
+                }
+            } elseif (!empty($p->curative)) {
+                // Fallback legacy
+                $sheet->setCellValue("E{$r1}", "1");
+                $sheet->setCellValue("F{$r1}", $p->curative);
+                $sheet->setCellValue("G{$r1}", $p->pic?->location_name ?? '-');
+            }
+
+            // Styles
+            $sheet->getStyle("C3:D9")->applyFromArray($cellBorder);
+            $sheet->getStyle("E3:H9")->applyFromArray($cellBorder);
+            $sheet->getStyle("I2:J5")->applyFromArray($cellBorder);
+            $sheet->getStyle("B{$r1}:K{$r2}")->applyFromArray($cellBorder);
+            $sheet->getStyle("B{$r1}:I{$r2}")->applyFromArray($center);
+            $sheet->getStyle("C{$r1}:I{$r2}")->applyFromArray($wrapTop);
+
+            // Embed image into J block (AFTER REPAIR)
+            $hasImage = false;
+            $offsetX = 5;
+            $imageAnchor = "C{$imageStart}";
+
+            // Priority: Attachments > Single Attachment > Null
+            $attachments = $p->attachments;
+            if ($attachments->count() > 0) {
+                foreach ($attachments as $att) {
+                    $imagePath = storage_path('app/public/' . ltrim($att->file_path, '/'));
+                    // Ensure file exists and is an image
+                    if (file_exists($imagePath) && @getimagesize($imagePath)) {
+                        $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                        $drawing->setName('Attachment');
+                        $drawing->setDescription('Problem Attachment');
+                        $drawing->setPath($imagePath);
+                        $drawing->setCoordinates($imageAnchor);
+                        $drawing->setHeight(90); // Fit in block (18*5 = 90)
+                        $drawing->setOffsetX($offsetX);
+                        $drawing->setOffsetY(5);
+                        $drawing->setWorksheet($sheet);
+
+                        $offsetX += 120; // Shift right if multiple (though merged cell is small)
+                        $hasImage = true;
+                        // Limit to 1 image for now to fit nicely? Or just let them stack.
+                        break; // Only show 1 image for now in the block
+                    }
+                }
+            } elseif (!empty($p->attachment)) {
+                $imagePath = storage_path('app/public/' . ltrim($p->attachment, '/'));
+                if (file_exists($imagePath) && @getimagesize($imagePath)) {
+                    $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                    $drawing->setName('Attachment');
+                    $drawing->setDescription('Problem Attachment');
+                    $drawing->setPath($imagePath);
+                    $drawing->setCoordinates($imageAnchor);
+                    $drawing->setHeight(90);
+                    $drawing->setOffsetX(5);
+                    $drawing->setOffsetY(5);
+                    $drawing->setWorksheet($sheet);
+                    $hasImage = true;
+                }
+            }
+
+            if (!$hasImage) {
+                $sheet->setCellValue($imageAnchor, "No Attachment");
+            }
+        }
+
+        // Freeze header
+        $sheet->freezePane('A11');
+
+        // Stream download
         return $this->downloadSpreadsheet($spreadsheet, $fileName);
     }
 
-    private function exportFormatKd($problems, $fileName)
-    {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('KD List');
-        $sheet->setCellValue('A1', 'KD List (Format Pending)');
-        return $this->downloadSpreadsheet($spreadsheet, $fileName);
-    }
 
-    private function exportFormatSk($problems, $fileName)
-    {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('SK List');
-        $sheet->setCellValue('A1', 'SK List (Format Pending)');
-        return $this->downloadSpreadsheet($spreadsheet, $fileName);
-    }
-
-    private function exportFormatBuyoff($problems, $fileName)
-    {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Buyoff List');
-        $sheet->setCellValue('A1', 'Buyoff List (Format Pending)');
-        return $this->downloadSpreadsheet($spreadsheet, $fileName);
-    }
 
     private function exportFormatKentokai($problems, $fileName)
     {

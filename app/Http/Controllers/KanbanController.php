@@ -68,7 +68,7 @@ class KanbanController extends Controller
             'project_id' => 'required|integer|exists:projects,id_project',
             'kanban_name' => 'required|string|max:20',
             'part_name' => 'required|string|max:100',
-            'part_number' => 'required|integer',
+            'part_number' => 'required',
             'item' => 'nullable|integer',
         ]);
         $kanban = Kanban::findOrFail($id);

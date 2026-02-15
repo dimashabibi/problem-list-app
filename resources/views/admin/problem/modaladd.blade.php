@@ -222,14 +222,57 @@
                         </div>
                         <div class="col-md-12">
                             <div class="mb-3">
-                                <label class="form-label">Curative</label>
-                                <textarea class="form-control" id="p_curative" rows="2" required></textarea>
+                                <label class="form-label">Curative Actions</label>
+                                <div id="curative-container">
+                                    <!-- Dynamic rows will go here -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2"
+                                    id="add-curative-btn">
+                                    <i class="bi bi-plus-lg"></i> Add Curative
+                                </button>
                             </div>
                         </div>
                         <div class="col-md-12">
                             <div class="mb-3">
-                                <label class="form-label">Preventive</label>
-                                <textarea class="form-control" id="p_preventive" rows="2"></textarea>
+                                <label class="form-label">Preventive Actions</label>
+                                <div id="preventive-container">
+                                    <!-- Dynamic rows will go here -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2"
+                                    id="add-preventive-btn">
+                                    <i class="bi bi-plus-lg"></i> Add Preventive
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Hidden Templates -->
+                        <div class="d-none">
+                            <div id="curative-template">
+                                <div class="input-group mb-2 curative-row">
+                                    <input type="text" class="form-control" name="curative_actions[]"
+                                        placeholder="Curative Action" required>
+                                    <input type="number" class="form-control" name="curative_hours[]"
+                                        placeholder="Hour" style="max-width: 100px;">
+                                    <select class="form-select" name="curative_pics[]" style="max-width: 200px;">
+                                        <option value="">Select PIC</option>
+                                        @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
+                                            <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-danger remove-row-btn">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="preventive-template">
+                                <div class="input-group mb-2 preventive-row">
+                                    <input type="text" class="form-control" name="preventive_actions[]"
+                                        placeholder="Preventive Action" required>
+                                    <button type="button" class="btn btn-outline-danger remove-row-btn">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-12">

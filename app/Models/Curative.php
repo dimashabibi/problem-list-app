@@ -16,6 +16,7 @@ class Curative extends Model
         'id_problem',
         'id_pic',
         'curative',
+        'hour',
     ];
 
     public function problem()

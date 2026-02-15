@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('curatives', function (Blueprint $table) {
             $table->id('id_curative');
-            $table->unsignedBigInteger('id_problem');
+            $table->integer('id_problem');
             $table->integer('id_pic')->nullable(); // Foreign Key to locations table
             $table->text('curative');
             $table->timestamps();
@@ -31,7 +31,7 @@ return new class extends Migration
 
         Schema::create('preventives', function (Blueprint $table) {
             $table->id('id_preventive');
-            $table->unsignedBigInteger('id_problem');
+            $table->integer('id_problem');
             $table->text('preventive');
             $table->timestamps();
 

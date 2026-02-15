@@ -166,16 +166,52 @@
                                     </div>
 
                                     <div class="col-12">
-                                        <label for="d_curative" class="form-label">Curative</label>
-                                        <textarea id="d_curative" class="form-control" rows="3" disabled></textarea>
+                                        <label class="form-label">Curative</label>
+                                        <div id="d_curative_container"></div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary mt-2 d-none" id="d_add_curative_btn">
+                                            <i class="bi bi-plus-lg"></i> Add Curative
+                                        </button>
+                                        <textarea id="d_curative" class="form-control d-none" rows="3" disabled></textarea>
                                     </div>
 
                                     <div class="col-12">
-                                        <label for="d_preventive" class="form-label">Preventive</label>
-                                        <textarea id="d_preventive" class="form-control" rows="3" disabled></textarea>
+                                        <label class="form-label">Preventive</label>
+                                        <div id="d_preventive_container"></div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary mt-2 d-none" id="d_add_preventive_btn">
+                                            <i class="bi bi-plus-lg"></i> Add Preventive
+                                        </button>
+                                        <textarea id="d_preventive" class="form-control d-none" rows="3" disabled></textarea>
                                     </div>
                                 </div>
                             </form>
+                            
+                            <!-- Hidden Templates for Detail Modal -->
+                            <div class="d-none">
+                                <div id="d_curative_template">
+                                    <div class="input-group mb-2 d-curative-row">
+                                        <input type="text" class="form-control" name="curative_actions[]" placeholder="Curative Action" required>
+                                        <input type="number" class="form-control" name="curative_hours[]" placeholder="Hour" style="max-width: 100px;">
+                                        <select class="form-select" name="curative_pics[]" style="max-width: 200px;">
+                                            <option value="">Select PIC</option>
+                                            @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
+                                                <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" class="btn btn-outline-danger d-remove-row-btn">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="d_preventive_template">
+                                    <div class="input-group mb-2 d-preventive-row">
+                                        <input type="text" class="form-control" name="preventive_actions[]" placeholder="Preventive Action" required>
+                                        <button type="button" class="btn btn-outline-danger d-remove-row-btn">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

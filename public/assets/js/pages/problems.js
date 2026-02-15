@@ -292,6 +292,16 @@
         });
     }
 
+    function addCurativeRow() {
+        var $clone = $('#curative-template .curative-row').clone();
+        $('#curative-container').append($clone);
+    }
+
+    function addPreventiveRow() {
+        var $clone = $('#preventive-template .preventive-row').clone();
+        $('#preventive-container').append($clone);
+    }
+
     function openProblemModal() {
         $("#problemForm")[0].reset();
         if (myDropzone) {
@@ -300,6 +310,11 @@
         $("#p_kanban")
             .empty()
             .append('<option value="">Select kanban</option>');
+
+        // Reset Dynamic Rows
+        $('#curative-container').empty();
+        $('#preventive-container').empty();
+        addCurativeRow(); // Add one default row
 
         var activeType =
             $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
@@ -335,6 +350,14 @@
 
     $(document).ready(function () {
         initTable();
+
+        // Dynamic Rows Handlers
+        $('#add-curative-btn').on('click', function() { addCurativeRow(); });
+        $('#add-preventive-btn').on('click', function() { addPreventiveRow(); });
+        
+        $(document).on('click', '.remove-row-btn', function() {
+            $(this).closest('.input-group').remove();
+        });
 
         // Init Choices for Filter Modal
         if (typeof Choices !== "undefined") {
@@ -777,8 +800,32 @@
                 }
                 var problem = $("#p_problem").val().trim();
                 var cause = $("#p_cause").val().trim();
-                var curative = $("#p_curative").val().trim();
-                var preventive = $("#p_preventive").val();
+                
+                // Collect Dynamic Rows
+                var curatives = [];
+                var curativePics = [];
+                var curativeHours = [];
+                $('#curative-container .curative-row').each(function() {
+                    var action = $(this).find('input[name="curative_actions[]"]').val();
+                    var hour = $(this).find('input[name="curative_hours[]"]').val();
+                    var pic = $(this).find('select[name="curative_pics[]"]').val();
+                    
+                    if(action && action.trim() !== "") {
+                        curatives.push(action.trim());
+                        curativePics.push(pic);
+                        curativeHours.push(hour);
+                    }
+                });
+
+                var preventives = [];
+                $('#preventive-container .preventive-row').each(function() {
+                    var $input = $(this).find('input');
+                    if ($input.length > 0) {
+                        var val = $input.val();
+                        var action = val ? val.trim() : "";
+                        if(action) preventives.push(action);
+                    }
+                });
 
                 var machineId = $("#p_machine").val();
                 var typeSaibo = $("#p_type_saibo").val();
@@ -895,11 +942,15 @@
                     });
                     return;
                 }
-                if (!curative) {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Curative action is required",
-                    });
+                if (curatives.length === 0) {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Curative action is required",
+                        });
+                    } else {
+                        alert("Curative action is required");
+                    }
                     return;
                 }
 
@@ -963,8 +1014,20 @@
                 formData.append("type", type);
                 formData.append("problem", problem);
                 formData.append("cause", cause);
-                formData.append("curative", curative);
-                formData.append("preventive", preventive);
+                
+                // Append Arrays
+                curatives.forEach(function(c, i) {
+                    formData.append('curative_actions[]', c);
+                    formData.append('curative_pics[]', curativePics[i] || '');
+                    formData.append('curative_hours[]', curativeHours[i] || '');
+                });
+                preventives.forEach(function(p) {
+                    formData.append('preventive_actions[]', p);
+                });
+                // Legacy fields populated with joined strings
+                formData.append("curative", curatives.join('\n'));
+                formData.append("preventive", preventives.join('\n'));
+
                 if (machineId) formData.append("id_machine", machineId);
                 if (typeSaibo) formData.append("type_saibo", typeSaibo);
                 if (classification) formData.append("classification", classification);
@@ -1152,6 +1215,46 @@
             $("#d_cause").val(row.cause || "");
             $("#d_curative").val(row.curative || "");
             $("#d_preventive").val(row.preventive || "");
+
+            // Populate Dynamic Lists for Detail Modal
+            $("#d_curative_container").empty();
+            if (row.curatives && row.curatives.length > 0) {
+                row.curatives.forEach(function (c) {
+                    var $row = $("#d_curative_template").children().clone();
+                    $row.find('input[name="curative_actions[]"]').val(c.curative).prop('disabled', true);
+                    $row.find('input[name="curative_hours[]"]').val(c.hour || "").prop('disabled', true);
+                    $row.find('select[name="curative_pics[]"]').val(c.id_pic || "").prop('disabled', true);
+                    $row.find('.d-remove-row-btn').addClass('d-none');
+                    $("#d_curative_container").append($row);
+                });
+            } else {
+                 // Fallback if no array data but legacy text exists
+                 var val = row.curative || "";
+                 if(val) {
+                     var $row = $("#d_curative_template").children().clone();
+                     $row.find('input[name="curative_actions[]"]').val(val).prop('disabled', true);
+                     $row.find('.d-remove-row-btn').addClass('d-none');
+                     $("#d_curative_container").append($row);
+                 }
+            }
+
+            $("#d_preventive_container").empty();
+            if (row.preventives && row.preventives.length > 0) {
+                row.preventives.forEach(function (p) {
+                    var $row = $("#d_preventive_template").children().clone();
+                    $row.find('input[name="preventive_actions[]"]').val(p.preventive).prop('disabled', true);
+                    $row.find('.d-remove-row-btn').addClass('d-none');
+                    $("#d_preventive_container").append($row);
+                });
+            } else {
+                 var val = row.preventive || "";
+                 if(val) {
+                     var $row = $("#d_preventive_template").children().clone();
+                     $row.find('input[name="preventive_actions[]"]').val(val).prop('disabled', true);
+                     $row.find('.d-remove-row-btn').addClass('d-none');
+                     $("#d_preventive_container").append($row);
+                 }
+            }
 
             // Group Code
             $("#d_group_code").val(row.group_code || "");
@@ -1438,8 +1541,14 @@
             $(this).addClass("d-none");
             $("#btn-save-problem").removeClass("d-none");
             $(
-                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_seksi_in_charge, #d_pic, #d_hour, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
+                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_seksi_in_charge, #d_pic, #d_hour, #d_type, #d_problem, #d_cause, #d_status",
             ).prop("disabled", false);
+
+            // Enable dynamic lists
+            $("#d_curative_container input, #d_curative_container select").prop("disabled", false);
+            $("#d_preventive_container input").prop("disabled", false);
+            $(".d-remove-row-btn").removeClass("d-none");
+            $("#d_add_curative_btn, #d_add_preventive_btn").removeClass("d-none");
 
             var type = $("#d_type").val();
             if (type === 'manufacturing') return; // Skip group code logic for manufacturing
@@ -1458,8 +1567,41 @@
             }
         });
 
+        // Dynamic Row Handlers for Detail Modal
+        $("#d_add_curative_btn").on("click", function () {
+            var $row = $("#d_curative_template").children().clone();
+            $("#d_curative_container").append($row);
+        });
+
+        $("#d_add_preventive_btn").on("click", function () {
+            var $row = $("#d_preventive_template").children().clone();
+            $("#d_preventive_container").append($row);
+        });
+
+        $(document).on("click", ".d-remove-row-btn", function () {
+            $(this).closest(".input-group").remove();
+        });
+
         $("#btn-save-problem").on("click", function () {
             var id = $(this).data("id");
+            var curatives = [];
+            var curativePics = [];
+            var curativeHours = [];
+            $("#d_curative_container .d-curative-row").each(function () {
+                var val = $(this).find('input[name="curative_actions[]"]').val();
+                if(val) {
+                    curatives.push(val);
+                    curativePics.push($(this).find('select[name="curative_pics[]"]').val());
+                    curativeHours.push($(this).find('input[name="curative_hours[]"]').val());
+                }
+            });
+
+            var preventives = [];
+            $("#d_preventive_container .d-preventive-row").each(function () {
+                var val = $(this).find('input[name="preventive_actions[]"]').val();
+                if(val) preventives.push(val);
+            });
+
             var data = {
                 id_project: $("#d_project").val(),
                 id_kanban: $("#d_kanban").val(),
@@ -1476,8 +1618,12 @@
                 status: $("#d_status").val(),
                 problem: $("#d_problem").val(),
                 cause: $("#d_cause").val(),
-                curative: $("#d_curative").val(),
-                preventive: $("#d_preventive").val(),
+                curative: curatives.join('\n'),
+                preventive: preventives.join('\n'),
+                curative_actions: curatives,
+                curative_pics: curativePics,
+                curative_hours: curativeHours,
+                preventive_actions: preventives
             };
 
             // Check if we are updating group code

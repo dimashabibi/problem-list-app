@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('problems', function (Blueprint $table) {
-            if (!Schema::hasColumn('problems', 'id_seksi_in_charge')) {
-                $table->integer('id_seksi_in_charge')->nullable();
+        Schema::table('curatives', function (Blueprint $table) {
+            if (!Schema::hasColumn('curatives', 'hour')) {
+                $table->integer('hour')->nullable()->after('curative');
             }
         });
     }
@@ -23,8 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('problems', function (Blueprint $table) {
-            $table->dropColumn(['id_seksi_in_charge']);
+        Schema::table('curatives', function (Blueprint $table) {
+            if (Schema::hasColumn('curatives', 'hour')) {
+                $table->dropColumn('hour');
+            }
         });
     }
 };

@@ -21,7 +21,6 @@ return new class extends Migration
                 $table->string('problem', 50)->nullable();
                 $table->text('cause')->nullable();
                 $table->text('curative')->nullable();
-                $table->text('attachment')->nullable();
                 $table->enum('status', ['dispatched', 'in_progress', 'closed'])->default('dispatched');
                 $table->integer('id_user')->nullable();
                 $table->enum('type', ['manufacturing', 'ks', 'kd', 'sk', 'kentokai', 'buyoff'])->default('manufacturing');
