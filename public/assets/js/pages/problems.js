@@ -183,11 +183,8 @@
         }
     }
 
-    function initTable() {
-        if (!document.getElementById("table-problem")) return;
-
-        var activeType =
-            $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
+    function buildDataUrl() {
+        var activeType = $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
         var url = "/problems/list?type=" + encodeURIComponent(activeType);
 
         if (currentFilter.project_id) url += "&project_id=" + encodeURIComponent(currentFilter.project_id);
@@ -195,6 +192,14 @@
         if (currentFilter.group_code) url += "&group_code=" + encodeURIComponent(currentFilter.group_code);
         if (currentFilter.start_date) url += "&start_date=" + encodeURIComponent(currentFilter.start_date);
         if (currentFilter.end_date) url += "&end_date=" + encodeURIComponent(currentFilter.end_date);
+        return url;
+    }
+
+    function initTable() {
+        if (!document.getElementById("table-problem")) return;
+
+        var url = buildDataUrl();
+        var activeType = $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
 
         // Logic: Manufacturing -> Use DataTables Excel Button (In Table)
         // Others -> Hide DataTables Excel Button
@@ -300,6 +305,59 @@
     function addPreventiveRow() {
         var $clone = $('#preventive-template .preventive-row').clone();
         $('#preventive-container').append($clone);
+    }
+
+    function initGallery() {
+        var $grid = $("#galleryGrid");
+        if (!$grid.length) return;
+
+        $grid.html('<div class="col-12 text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+
+        var url = buildDataUrl();
+        $.getJSON(url).done(function(data) {
+            $grid.empty();
+            if (!data || data.length === 0) {
+                $grid.html('<div class="col-12 text-center text-muted py-5">No problems found.</div>');
+                return;
+            }
+
+            var count = 0;
+            (data || []).forEach(function(row) {
+                var img = null;
+                if (row.attachments && row.attachments.length > 0) {
+                    img = "/storage/" + row.attachments[0];
+                }
+                if (!img) {
+                    return;
+                }
+                count++;
+                var dateStr = row.created_at ? new Date(row.created_at).toLocaleDateString() : "-";
+                var col = $('<div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"></div>');
+                var card = $('<div class="card h-100 shadow-sm"></div>');
+                
+                var imgEl = $('<img class="card-img-top" alt="attachment" loading="lazy" style="height: 200px; object-fit: cover;">')
+                    .attr("src", img)
+                    .on('error', function() {
+                         $(this).replaceWith('<div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height: 200px;"><i class="bi bi-image-slash fs-1"></i></div>');
+                    });
+
+                var body = $('<div class="card-body d-flex flex-column"></div>');
+                var title = $('<h6 class="card-title text-truncate" title="' + (row.problem || "") + '"></h6>').text(row.problem || "-");
+                var date = $('<div class="text-muted small mb-3"></div>').text(dateStr);
+                var btn = $('<button class="btn btn-outline-primary btn-sm mt-auto w-100 btn-detail">Detail</button>').attr('data-id', row.id_problem);
+                
+                body.append(title).append(date).append(btn);
+                card.append(imgEl).append(body);
+                col.append(card);
+                $grid.append(col);
+            });
+
+            if (count === 0) {
+                $grid.html('<div class="col-12 text-center text-muted py-5">No problems with attachments found.</div>');
+            }
+        }).fail(function() {
+             $grid.html('<div class="col-12 text-center text-danger py-5">Failed to load data.</div>');
+        });
     }
 
     function openProblemModal() {
@@ -425,7 +483,11 @@
         }
 
         $(".nav-tabs .nav-link").on("shown.bs.tab", function (e) {
-            initTable();
+            if ($("#problemsGalleryContainer").length && !$("#problemsGalleryContainer").hasClass("d-none")) {
+                initGallery();
+            } else {
+                initTable();
+            }
         });
 
         // Filter Table Handler (Opens Modal)
@@ -1663,4 +1725,6 @@
 
         window.loadProblems = initTable;
     });
+    window.loadProblems = initTable;
+    window.loadProblemGallery = initGallery;
 })();

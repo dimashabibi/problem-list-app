@@ -73,6 +73,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/admin/problems', [ProblemController::class, 'index'])->name('admin.problems.index');
     Route::get('/admin/problems/table', [ProblemController::class, 'table'])->name('admin.problems.table');
+    Route::get('/admin/problems/gallery', [ProblemController::class, 'gallery'])->name('admin.problems.gallery');
     Route::get('/problems/list', [ProblemController::class, 'list'])->name('problems.list');
     Route::post('/problems/store', [ProblemController::class, 'store'])->name('problems.store');
     Route::put('/problems/{id}', [ProblemController::class, 'update'])->name('problems.update');

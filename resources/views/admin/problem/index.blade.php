@@ -72,13 +72,22 @@
 
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Problems</h5>
+                        <div class="btn-group" role="group" aria-label="View switch">
+                            <button type="button" class="btn btn-soft-primary active" id="btnViewList">List
+                                Problem</button>
+                            <button type="button" class="btn btn-soft-primary" id="btnViewGallery">Gallery
+                                Problem</button>
+                        </div>
                         <div>
-                            <button id="btnFilterTable" class="btn btn-info me-2"><i class="bi bi-funnel"></i> Filter Table</button>
+                            <button id="btnFilterTable" class="btn btn-info me-2"><i class="bi bi-funnel"></i> Filter
+                                Table</button>
                             <button id="btnProblemAdd" class="btn btn-primary">Add Problem</button>
                         </div>
                     </div>
                     <div class="card-body">
+                        <div class="d-flex justify-content-end mb-3">
+
+                        </div>
                         <ul class="nav nav-tabs nav-tabs-custom nav-justified mb-3" role="tablist">
                             <li class="nav-item">
                                 <a class="nav-link active" data-bs-toggle="tab" href="#manufacturing" role="tab"
@@ -115,6 +124,7 @@
                             </li>
                         </ul>
                         <div id="problemsTableContainer"></div>
+                        <div id="problemsGalleryContainer" class="d-none"></div>
                     </div>
                 </div>
 
@@ -133,8 +143,32 @@
     <script src="{{ asset('assets/js/components/form-clipboard.js') }}"></script>
     <script>
         $(function() {
-            $('#problemsTableContainer').load('/admin/problems/table', function() {
-                if (window.loadProblems) window.loadProblems();
+            function loadList() {
+                $('#problemsTableContainer').load('/admin/problems/table', function() {
+                    if (window.loadProblems) window.loadProblems();
+                });
+            }
+
+            function loadGallery() {
+                $('#problemsGalleryContainer').load('/admin/problems/gallery', function() {
+                    if (window.loadProblemGallery) window.loadProblemGallery();
+                });
+            }
+            loadList();
+
+            $('#btnViewList').on('click', function() {
+                $('#btnViewGallery').removeClass('active');
+                $(this).addClass('active');
+                $('#problemsGalleryContainer').addClass('d-none');
+                $('#problemsTableContainer').removeClass('d-none');
+                loadList();
+            });
+            $('#btnViewGallery').on('click', function() {
+                $('#btnViewList').removeClass('active');
+                $(this).addClass('active');
+                $('#problemsTableContainer').addClass('d-none');
+                $('#problemsGalleryContainer').removeClass('d-none');
+                loadGallery();
             });
         });
     </script>

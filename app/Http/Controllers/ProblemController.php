@@ -30,6 +30,11 @@ class ProblemController extends Controller
         return view('admin.problem.table');
     }
 
+    public function gallery()
+    {
+        return view('admin.problem.gallery');
+    }
+
     public function list(Request $request)
     {
         $q = Problem::query()
