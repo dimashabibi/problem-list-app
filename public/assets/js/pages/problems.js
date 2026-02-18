@@ -30,6 +30,7 @@
     }
 
     var table;
+    var galleryData = [];
     var myDropzone;
     var fltProjectChoices, fltKanbanChoices, fltGroupCodeChoices;
     var currentFilter = {};
@@ -315,6 +316,7 @@
 
         var url = buildDataUrl();
         $.getJSON(url).done(function(data) {
+            galleryData = data || [];
             $grid.empty();
             if (!data || data.length === 0) {
                 $grid.html('<div class="col-12 text-center text-muted py-5">No problems found.</div>');
@@ -1204,13 +1206,26 @@
 
         $(document).on("click", ".btn-detail", function () {
             var id = $(this).data("id");
-            var tr = $(this).closest("tr");
-            var row = table.row(tr).data();
+            var row;
 
-            if (!row) {
-                // Fallback for edge cases
-                var allData = table.rows().data().toArray();
-                row = allData.find(function (item) {
+            if (table) {
+                var tr = $(this).closest("tr");
+                if (tr.length > 0) {
+                    row = table.row(tr).data();
+                }
+
+                if (!row) {
+                    // Fallback for edge cases in table
+                    var allData = table.rows().data().toArray();
+                    row = allData.find(function (item) {
+                        return item.id_problem == id;
+                    });
+                }
+            }
+
+            // Fallback for gallery mode
+            if (!row && galleryData && galleryData.length > 0) {
+                row = galleryData.find(function (item) {
                     return item.id_problem == id;
                 });
             }
