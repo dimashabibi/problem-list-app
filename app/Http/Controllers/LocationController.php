@@ -63,4 +63,16 @@ class LocationController extends Controller
         $loc->delete();
         return response()->json(['success' => true]);
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:locations,id_location',
+        ]);
+
+        Location::whereIn('id_location', $validated['ids'])->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

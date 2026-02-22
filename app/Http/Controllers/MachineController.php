@@ -46,4 +46,16 @@ class MachineController extends Controller
         $machine->delete();
         return response()->json(['success' => true]);
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:machines,id_machine',
+        ]);
+
+        Machine::whereIn('id_machine', $validated['ids'])->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

@@ -49,6 +49,13 @@
             },
             columns: [
                 {
+                    data: "id_machine",
+                    orderable: false,
+                    render: function (data, type, row) {
+                        return `<input type="checkbox" class="form-check-input machine-checkbox" value="${data}">`;
+                    }
+                },
+                {
                     data: null,
                     render: function (data, type, row, meta) {
                         return meta.row + 1;
@@ -100,6 +107,62 @@
 
     $(document).ready(function () {
         initTable();
+
+        // Select All functionality
+        $(document).on('change', '#selectAll', function() {
+            $('.machine-checkbox').prop('checked', $(this).prop('checked'));
+            toggleBulkDeleteBtn();
+        });
+
+        // Individual checkbox change
+        $(document).on('change', '.machine-checkbox', function() {
+            var totalCheckboxes = $('.machine-checkbox').length;
+            var checkedCheckboxes = $('.machine-checkbox:checked').length;
+            $('#selectAll').prop('checked', totalCheckboxes === checkedCheckboxes);
+            toggleBulkDeleteBtn();
+        });
+
+        // Toggle bulk delete button visibility
+        function toggleBulkDeleteBtn() {
+            var checkedCount = $('.machine-checkbox:checked').length;
+            if (checkedCount > 0) {
+                $('#btnBulkDelete').removeClass('d-none');
+            } else {
+                $('#btnBulkDelete').addClass('d-none');
+            }
+        }
+
+        // Bulk Delete functionality
+        $('#btnBulkDelete').off('click').on('click', function() {
+            var ids = [];
+            $('.machine-checkbox:checked').each(function() {
+                ids.push($(this).val());
+            });
+
+            if (ids.length === 0) return;
+
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Delete selected machines?',
+                    text: `You are about to delete ${ids.length} machines.`,
+                    showCancelButton: true,
+                    cancelButtonText: 'Cancel',
+                    confirmButtonText: 'Delete',
+                }).then(function(result){
+                    if (result.isConfirmed) {
+                        ajax({ url: '/machines/bulk', method: 'DELETE', data: { ids: ids } }).done(function(){
+                            if (window.Swal) {
+                                Swal.fire({ icon: 'success', title: 'Machines Deleted', timer: 1200, showConfirmButton: false });
+                            }
+                            if (table) table.ajax.reload();
+                            $('#selectAll').prop('checked', false);
+                            toggleBulkDeleteBtn();
+                        });
+                    }
+                });
+            }
+        });
 
         $("#btnAdd").on("click", function () {
             openModal("Add Machine", null);

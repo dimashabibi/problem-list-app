@@ -36,6 +36,13 @@
         },
         columns: [
             { 
+                data: 'id_location',
+                orderable: false,
+                render: function(data, type, row) {
+                    return `<input type="checkbox" class="form-check-input location-checkbox" value="${data}">`;
+                }
+            },
+            { 
                 data: null, 
                 render: function (data, type, row, meta) {
                     return meta.row + 1;
@@ -99,6 +106,62 @@
 
   $(document).ready(function(){
     initTable();
+
+    // Select All functionality
+    $(document).on('change', '#selectAll', function() {
+        $('.location-checkbox').prop('checked', $(this).prop('checked'));
+        toggleBulkDeleteBtn();
+    });
+
+    // Individual checkbox change
+    $(document).on('change', '.location-checkbox', function() {
+        var totalCheckboxes = $('.location-checkbox').length;
+        var checkedCheckboxes = $('.location-checkbox:checked').length;
+        $('#selectAll').prop('checked', totalCheckboxes === checkedCheckboxes);
+        toggleBulkDeleteBtn();
+    });
+
+    // Toggle bulk delete button visibility
+    function toggleBulkDeleteBtn() {
+        var checkedCount = $('.location-checkbox:checked').length;
+        if (checkedCount > 0) {
+            $('#btnBulkDelete').removeClass('d-none');
+        } else {
+            $('#btnBulkDelete').addClass('d-none');
+        }
+    }
+
+    // Bulk Delete functionality
+    $('#btnBulkDelete').off('click').on('click', function() {
+        var ids = [];
+        $('.location-checkbox:checked').each(function() {
+            ids.push($(this).val());
+        });
+
+        if (ids.length === 0) return;
+
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Delete selected locations?',
+                text: `You are about to delete ${ids.length} locations.`,
+                showCancelButton: true,
+                cancelButtonText: 'Cancel',
+                confirmButtonText: 'Delete',
+            }).then(function(result){
+                if (result.isConfirmed) {
+                    ajax({ url: '/locations/bulk', method: 'DELETE', data: { ids: ids } }).done(function(){
+                        if (window.Swal) {
+                            Swal.fire({ icon: 'success', title: 'Locations Deleted', timer: 1200, showConfirmButton: false });
+                        }
+                        if (table) table.ajax.reload();
+                        $('#selectAll').prop('checked', false);
+                        toggleBulkDeleteBtn();
+                    });
+                }
+            });
+        }
+    });
 
     $('#btnLocationAdd').off('click').on('click', function(){
       openLocationModal('Add Location', null);

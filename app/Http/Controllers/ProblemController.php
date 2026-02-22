@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Problem;
 use App\Models\Project;
+use App\Models\Item;
 use App\Models\Kanban;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -153,6 +154,24 @@ class ProblemController extends Controller
         return $name;
     }
 
+    private function parseHour($value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $str = str_replace(',', '.', trim((string) $value));
+        if ($str === '') {
+            return null;
+        }
+
+        if (!is_numeric($str)) {
+            return null;
+        }
+
+        return round((float) $str, 2);
+    }
+
     public function store(Request $request)
     {
         $rules = [
@@ -160,10 +179,15 @@ class ProblemController extends Controller
             'type' => 'required|in:manufacturing,ks,kd,sk,kentokai,buyoff',
             'problem' => 'required|string',
             'cause' => 'nullable|string',
+            'classification_problem' => 'nullable|string',
             'curatives' => 'nullable|array',
             'curatives.*.curative' => 'nullable|string',
             'curatives.*.id_pic' => 'nullable|integer|exists:locations,id_location',
+<<<<<<< Updated upstream
             'curatives.*.hour' => 'nullable',
+=======
+            'curatives.*.hour' => 'nullable|string',
+>>>>>>> Stashed changes
             'preventives' => 'nullable|array',
             'preventives.*.preventive' => 'nullable|string',
             'curative_actions' => 'nullable|array',
@@ -171,7 +195,11 @@ class ProblemController extends Controller
             'curative_pics' => 'nullable|array',
             'curative_pics.*' => 'nullable|integer|exists:locations,id_location',
             'curative_hours' => 'nullable|array',
+<<<<<<< Updated upstream
             'curative_hours.*' => 'nullable',
+=======
+            'curative_hours.*' => 'nullable|string',
+>>>>>>> Stashed changes
             'preventive_actions' => 'nullable|array',
             'preventive_actions.*' => 'string|nullable',
             'attachment' => 'nullable|array',
@@ -304,6 +332,7 @@ class ProblemController extends Controller
             'group_code' => $groupCode,
             'group_code_norm' => $groupCodeNorm,
             'id_seksi_in_charge' => $request->input('id_seksi_in_charge'),
+            'classification_problem' => $request->input('classification_problem'),
         ]);
 
         DB::transaction(function () use ($problemData, $attachmentPaths, $request) {
@@ -318,23 +347,34 @@ class ProblemController extends Controller
             if (is_array($curativesNested) && count($curativesNested) > 0) {
                 foreach ($curativesNested as $c) {
                     $text = isset($c['curative']) ? trim((string) $c['curative']) : '';
-                    if ($text === '') continue;
+                    if ($text === '') {
+                        continue;
+                    }
+
+                    $hourValue = isset($c['hour']) ? $this->parseHour($c['hour']) : null;
+
                     \App\Models\Curative::create([
                         'id_problem' => $problem->id_problem,
                         'curative' => $text,
                         'id_pic' => !empty($c['id_pic']) ? $c['id_pic'] : null,
-                        'hour' => isset($c['hour']) && $c['hour'] !== '' ? (int) $c['hour'] : null,
+                        'hour' => $hourValue,
                     ]);
                 }
             } elseif (is_array($curativeActions)) {
                 foreach ($curativeActions as $index => $action) {
                     $text = trim((string) $action);
-                    if ($text === '') continue;
+                    if ($text === '') {
+                        continue;
+                    }
+
+                    $rawHour = $curativeHours[$index] ?? null;
+                    $hourValue = $this->parseHour($rawHour);
+
                     \App\Models\Curative::create([
                         'id_problem' => $problem->id_problem,
                         'curative' => $text,
                         'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
-                        'hour' => !empty($curativeHours[$index]) ? (int) $curativeHours[$index] : null,
+                        'hour' => $hourValue,
                     ]);
                 }
             }
@@ -387,11 +427,16 @@ class ProblemController extends Controller
             'status' => 'required|in:dispatched,in_progress,closed',
             'problem' => 'required|string',
             'cause' => 'nullable|string',
+            'classification_problem' => 'nullable|string',
             // New nested array format
             'curatives' => 'nullable|array',
             'curatives.*.curative' => 'nullable|string',
             'curatives.*.id_pic' => 'nullable|integer|exists:locations,id_location',
+<<<<<<< Updated upstream
             'curatives.*.hour' => 'nullable',
+=======
+            'curatives.*.hour' => 'nullable|string',
+>>>>>>> Stashed changes
             'preventives' => 'nullable|array',
             'preventives.*.preventive' => 'nullable|string',
             // Legacy flat arrays (supported for compatibility)
@@ -400,7 +445,11 @@ class ProblemController extends Controller
             'curative_pics' => 'nullable|array',
             'curative_pics.*' => 'nullable|integer|exists:locations,id_location',
             'curative_hours' => 'nullable|array',
+<<<<<<< Updated upstream
             'curative_hours.*' => 'nullable',
+=======
+            'curative_hours.*' => 'nullable|string',
+>>>>>>> Stashed changes
             'preventive_actions' => 'nullable|array',
             'preventive_actions.*' => 'string|nullable',
         ];
@@ -420,6 +469,7 @@ class ProblemController extends Controller
             'type_saibo' => $request->input('type_saibo'),
             'classification' => $request->input('classification'),
             'stage' => $request->input('stage'),
+            'classification_problem' => $request->input('classification_problem'),
         ];
 
         if ($request->filled('group_code')) {
@@ -444,23 +494,34 @@ class ProblemController extends Controller
             if (is_array($curativesNested) && count($curativesNested) > 0) {
                 foreach ($curativesNested as $c) {
                     $text = isset($c['curative']) ? trim((string) $c['curative']) : '';
-                    if ($text === '') continue;
+                    if ($text === '') {
+                        continue;
+                    }
+
+                    $hourValue = isset($c['hour']) ? $this->parseHour($c['hour']) : null;
+
                     \App\Models\Curative::create([
                         'id_problem' => $problem->id_problem,
                         'curative' => $text,
                         'id_pic' => !empty($c['id_pic']) ? $c['id_pic'] : null,
-                        'hour' => isset($c['hour']) && $c['hour'] !== '' ? (int) $c['hour'] : null,
+                        'hour' => $hourValue,
                     ]);
                 }
             } elseif (is_array($curativeActions)) {
                 foreach ($curativeActions as $index => $action) {
                     $text = trim((string) $action);
-                    if ($text === '') continue;
+                    if ($text === '') {
+                        continue;
+                    }
+
+                    $rawHour = $curativeHours[$index] ?? null;
+                    $hourValue = $this->parseHour($rawHour);
+
                     \App\Models\Curative::create([
                         'id_problem' => $problem->id_problem,
                         'curative' => $text,
                         'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
-                        'hour' => !empty($curativeHours[$index]) ? (int) $curativeHours[$index] : null,
+                        'hour' => $hourValue,
                     ]);
                 }
             }
@@ -558,19 +619,31 @@ class ProblemController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        // Validasi status yang dikirimkan
         $request->validate([
-            'status' => 'required|in:dispatched,in_progress,closed'
+            'status' => 'required|in:dispatched,in_progress,closed',
         ]);
 
-        // Menemukan problem berdasarkan ID
         $problem = Problem::findOrFail($id);
 
-        // Mengubah status sesuai dengan request
-        $problem->status = $request->status;
+        $status = $request->status;
+        $problem->status = $status;
+
+        if ($status === 'dispatched') {
+            if (!$problem->dispatched_at) {
+                $now = now();
+                $problem->dispatched_at = $now;
+                if (!$problem->target) {
+                    $problem->target = $now->copy()->addDays(5);
+                }
+            }
+        } elseif ($status === 'closed') {
+            if (!$problem->closed_at) {
+                $problem->closed_at = now();
+            }
+        }
+
         $problem->save();
 
-        // Mengembalikan response sukses
         return response()->json(['success' => true]);
     }
 
@@ -644,6 +717,7 @@ class ProblemController extends Controller
         $headerStyle = [
             'font' => ['bold' => true, 'size' => 14],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'wrap_text' => true,
         ];
         $borderStyle = [
             'borders' => [
@@ -673,113 +747,143 @@ class ProblemController extends Controller
         $problem = $problems->first();
         if (!$problem) return null; // Should not happen if check is done before
 
+        $spreadsheet->getDefaultStyle()->getFont()
+            ->setName('Calibri')
+            ->setSize(11);
+
+        $sheet->getDefaultColumnDimension()->setWidth(2.71);
         // --- Logo & Title Header ---
         // Assuming TMMIN logo is text for now or simple placeholder
-        $sheet->mergeCells('B1:D3');
+        $sheet->mergeCells('B1:E3');
         $sheet->setCellValue('B1', 'TMMIN'); // Placeholder for Logo
-        $sheet->getStyle('B1')->getFont()->setBold(true)->setSize(24)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_RED));
+        $sheet->getStyle('B1')->getFont()->setBold(true)->setSize(18)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_RED));
         $sheet->getStyle('B1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
-        $sheet->mergeCells('E1:L1');
-        $sheet->setCellValue('E1', 'Production Engineering & Tooling Div.');
-        $sheet->mergeCells('E2:L2');
-        $sheet->setCellValue('E2', 'Dies & Jig Planning Control & Adm. Dept.');
-        $sheet->mergeCells('E3:L3');
-        $sheet->setCellValue('E3', 'Dies Planning & Engineering Sec.');
+        $sheet->mergeCells('F1:Q1');
+        $sheet->setCellValue('F1', 'Production Engineering & Tooling Div.');
+        $sheet->mergeCells('F2:Q2');
+        $sheet->setCellValue('F2', 'Dies & Jig Planning Control & Adm. Dept.');
+        $sheet->mergeCells('F3:Q3');
+        $sheet->setCellValue('F3', 'Dies Planning & Engineering Sec.');
 
-        $sheet->mergeCells('M1:AC3');
-        $sheet->setCellValue('M1', 'Lembar Informasi Masalah Manufakturing');
-        $sheet->getStyle('M1')->applyFromArray($headerStyle);
+        $sheet->mergeCells('R1:AJ3');
+        $sheet->setCellValue('R1', 'Lembar Informasi Masalah Manufakturing');
+        $sheet->getStyle('R1')->applyFromArray($headerStyle);
 
-        // Date & Problem No
-        $sheet->mergeCells('AE1:AG1');
-        $sheet->setCellValue('AE1', 'Tanggal');
-        $sheet->getStyle('AE1')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('AH1:AI1');
-        $sheet->setCellValue('AH1', 'No Masalah');
-        $sheet->getStyle('AH1')->applyFromArray($blueHeaderStyle);
+        // Date 
+        $sheet->mergeCells('AK1:AN1');
+        $sheet->setCellValue('AK1', 'Tanggal');
+        $sheet->getStyle('AK1')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AK2:AN3');
+        $sheet->setCellValue('AK2', $problem->created_at->format('d-M-Y'));
+        $sheet->getStyle('AK2')->applyFromArray($centerStyle);
 
-        $sheet->mergeCells('AE2:AG3');
-        $sheet->setCellValue('AE2', $problem->created_at->format('d-M-Y'));
-        $sheet->getStyle('AE2')->applyFromArray($centerStyle);
-        $sheet->mergeCells('AH2:AI3');
-        $sheet->setCellValue('AH2', $problem->id_problem);
-        $sheet->getStyle('AH2')->applyFromArray($centerStyle);
+        // PROBLEM NO
+        $sheet->mergeCells('AO1:AS1');
+        $sheet->setCellValue('AO1', 'No Masalah');
+        $sheet->getStyle('AO1')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AO2:AS3');
+        $sheet->setCellValue('AO2', $problem->id_problem);
+        $sheet->getStyle('AO2')->applyFromArray($centerStyle);
 
-        // --- Info Section 1 (Kanban, Item, Project...) ---
-        $sheet->mergeCells('B5:D5');
+
+        // ================================================================ Info Section 1 (Kanban, Item, Project...) ================================================================
+
+        // KANBAN
+        $sheet->mergeCells('B5:G5');
         $sheet->setCellValue('B5', 'Kanban');
         $sheet->getStyle('B5')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('E5:I5');
-        $sheet->setCellValue('E5', 'Item');
-        $sheet->getStyle('E5')->applyFromArray($blueHeaderStyle);
-
-        $sheet->mergeCells('B6:D7');
+        $sheet->mergeCells('B6:G7');
         $sheet->setCellValue('B6', $problem->kanban?->kanban_name);
         $sheet->getStyle('B6')->applyFromArray($centerStyle);
-        $sheet->mergeCells('E6:I7');
-        $sheet->setCellValue('E6', $problem->item?->item_name);
-        $sheet->getStyle('E6')->applyFromArray($centerStyle);
 
-        // Project Info Table
-        $sheet->setCellValue('J5', 'Proyek');
-        $sheet->mergeCells('K5:M5');
-        $sheet->setCellValue('K5', $problem->project?->project_name);
-        $sheet->setCellValue('J6', 'Proses');
-        $sheet->mergeCells('K6:M6');
-        $sheet->mergeCells('J7:M7');
-        $sheet->setCellValue('J7', 'Nama Part');
+        // ITEM
+        $sheet->mergeCells('H5:L5');
+        $sheet->setCellValue('H5', 'Item');
+        $sheet->getStyle('H5')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('H6:L7');
+        $sheet->setCellValue('H6', $problem->item?->item_name);
+        $sheet->getStyle('H6')->applyFromArray($centerStyle);
 
-        $sheet->setCellValue('N5', 'No Part');
-        $sheet->mergeCells('O5:R5');
-        $sheet->setCellValue('N6', 'Nama Proses');
-        $sheet->mergeCells('O6:R6');
-        $sheet->mergeCells('N7:R7');
+        // Project Info Table (Proyek / Proses / Part)
+        $sheet->mergeCells('M5:O5');
+        $sheet->setCellValue('M5', 'Proyek');
+        $sheet->mergeCells('P5:R5');
+        $sheet->setCellValue('P5', $problem->project?->project_name);
 
-        // --- Signatures ---
-        $sheet->mergeCells('S5:U5');
-        $sheet->setCellValue('S5', 'DpH Eng.');
-        $sheet->getStyle('S5')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('V5:X5');
-        $sheet->setCellValue('V5', 'SH Eng.');
-        $sheet->getStyle('V5')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('Y5:AC5');
-        $sheet->setCellValue('Y5', 'Staff Engineering');
-        $sheet->getStyle('Y5')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('M6:O6');
+        $sheet->setCellValue('M6', 'Proses');
+        $sheet->mergeCells('P6:R6');
+        $sheet->setCellValue('P6', $problem->process?->process_name);
 
-        $sheet->mergeCells('S6:U7');
-        $sheet->setCellValue('S6', ''); // Static per template example
-        $sheet->getStyle('S6')->applyFromArray($centerStyle);
-        $sheet->getStyle('S6')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('V6:X7');
-        $sheet->setCellValue('V6', ''); // Static
-        $sheet->getStyle('V6')->applyFromArray($centerStyle);
-        $sheet->getStyle('V6')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('Y6:AC7');
-        $sheet->getStyle('Y6')->applyFromArray($centerStyle);
-        $sheet->getStyle('Y6')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('S5:W5');
+        $sheet->setCellValue('S5', 'No Part');
+        $sheet->mergeCells('X5:AB5');
+        $sheet->setCellValue('X5', $problem->part?->part_number);
+        $sheet->getStyle('X5')->applyFromArray($centerStyle);
 
-        // --- Problem & Cause Headers ---
-        $sheet->mergeCells('B9:O9');
+        $sheet->mergeCells('S6:W6');
+        $sheet->setCellValue('S6', 'Nama Proses');
+        $sheet->mergeCells('X6:AB6');
+        $sheet->setCellValue('X6', ' ');
+        $sheet->getStyle('X6')->applyFromArray($centerStyle);
+
+        $sheet->mergeCells('M7:R7');
+        $sheet->setCellValue('M7', 'Nama Part');
+        $sheet->mergeCells('S7:AB7');
+        $sheet->setCellValue('S7', $problem->part?->part_name);
+
+
+
+        // ================================================================ Signatures ================================================================
+
+        // DPH ENG
+        $sheet->mergeCells('AD5:AG5');
+        $sheet->setCellValue('AD5', 'DpH Eng.');
+        $sheet->getStyle('AD5')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AD6:AG7');
+        $sheet->setCellValue('AD6', ''); // Static per template example
+        $sheet->getStyle('AD6')->applyFromArray($centerStyle);
+        $sheet->getStyle('AD6')->applyFromArray($boldTextStyle);
+
+        // SH ENG   
+        $sheet->mergeCells('AH5:AL5');
+        $sheet->setCellValue('AH5', 'SH Eng.');
+        $sheet->getStyle('AH5')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AH6:AL7');
+        $sheet->setCellValue('AH6', ''); // Static
+        $sheet->getStyle('AH6')->applyFromArray($centerStyle);
+        $sheet->getStyle('AH6')->applyFromArray($boldTextStyle);
+
+        // STAFF ENG
+        $sheet->mergeCells('AM5:AS5');
+        $sheet->setCellValue('AM5', 'Staff Engineering');
+        $sheet->getStyle('AM5')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AM6:AS7');
+        $sheet->getStyle('AM6')->applyFromArray($centerStyle);
+        $sheet->getStyle('AM6')->applyFromArray($boldTextStyle);
+        // SIGNATURES END
+
+        // ================================================================ Problem & Cause Headers ================================================================
+
+        // PROBLEM
+        $sheet->mergeCells('B9:S9');
         $sheet->setCellValue('B9', 'Masalah');
         $sheet->getStyle('B9')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('P9:AC9');
-        $sheet->setCellValue('P9', 'Penyebab Masalah');
-        $sheet->getStyle('P9')->applyFromArray($blueHeaderStyle);
-
-        // --- Content Areas ---
-        // Masalah
-        $sheet->mergeCells('B10:O11');
+        $sheet->mergeCells('B10:S11');
         $sheet->setCellValue('B10', $problem->problem);
         $sheet->getStyle('B10')->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
 
-        // Penyebab
-        $sheet->mergeCells('P10:AC11');
-        $sheet->setCellValue('P10', $problem->cause);
-        $sheet->getStyle('P10')->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+        // CAUSE
+        $sheet->mergeCells('T9:AJ9');
+        $sheet->setCellValue('T9', 'Penyebab Masalah');
+        $sheet->getStyle('T9')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('T10:AJ11');
+        $sheet->setCellValue('T10', $problem->cause);
+        $sheet->getStyle('T10')->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
 
         // Image Area
-        $sheet->mergeCells('B12:AC28');
+        $sheet->mergeCells('B12:AJ28');
         $sheet->getStyle('B12')->applyFromArray($centerStyle);
 
         $hasDetailImage = false;
@@ -804,94 +908,113 @@ class ProblemController extends Controller
                 }
             }
         }
-
-        
-
         if (!$hasDetailImage) {
             $sheet->setCellValue('B12', 'No Attachment');
         }
+        // PROBLEM & CAUSE END
 
         // --- Right Side Panels (Location, Class, etc) ---
         // Location
-        $sheet->mergeCells('AE9:AI9');
-        $sheet->setCellValue('AE9', 'Lokasi');
-        $sheet->getStyle('AE9')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('AE10:AI11');
-        $sheet->setCellValue('AE10', $problem->location?->location_name);
-        $sheet->getStyle('AE10')->applyFromArray($centerStyle);
-        $sheet->getStyle('AE10')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AL9:AS9');
+        $sheet->setCellValue('AL9', 'Lokasi');
+        $sheet->getStyle('AL9')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AL10:AS11');
+        $sheet->setCellValue('AL10', $problem->location?->location_name);
+        $sheet->getStyle('AL10')->applyFromArray($centerStyle);
+        $sheet->getStyle('AL10')->applyFromArray($boldTextStyle);
 
-        $sheet->mergeCells('AE12:AF12');
-        $sheet->setCellValue('AE12', $problem->machine?->name_machine);
-        $sheet->setCellValue('AE12', 'Mesin');
-        $sheet->getStyle('AE12')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('AG12:AI12');
-        $sheet->setCellValue('AG12', 'Stage');
-        $sheet->getStyle('AG12')->applyFromArray($blueHeaderStyle);
+        // MACHINE
+        $sheet->mergeCells('AL12:AO12');
+        $sheet->setCellValue('AL12', 'Mesin');
+        $sheet->getStyle('AL12')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AL13:AO14');
+        $sheet->setCellValue('AL13', $problem->machine?->name_machine);
+        $sheet->getStyle('AL13')->applyFromArray($centerStyle);
+        $sheet->getStyle('AL13')->applyFromArray($boldTextStyle);
 
-        $sheet->mergeCells('AE13:AF14');
-        $sheet->mergeCells('AG13:AI14');
-        $sheet->setCellValue('AG13', $problem->stage);
-        $sheet->getStyle('AG13')->applyFromArray($centerStyle);
-        $sheet->getStyle('AG13')->applyFromArray($boldTextStyle);
+        // STAGE
+        $sheet->mergeCells('AP12:AS12');
+        $sheet->setCellValue('AP12', 'Stage');
+        $sheet->getStyle('AP12')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AP13:AS14');
+        $sheet->setCellValue('AP13', $problem->stage);
+        $sheet->getStyle('AP13')->applyFromArray($centerStyle);
+        $sheet->getStyle('AP13')->applyFromArray($boldTextStyle);
 
         // Classification
-        $sheet->mergeCells('AE15:AF15');
-        $sheet->setCellValue('AE15', 'Klasifikasi');
-        $sheet->getStyle('AE15')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('AG15:AI15');
-        $sheet->setCellValue('AG15', 'Tipe');
-        $sheet->getStyle('AG15')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AL15:AO15');
+        $sheet->setCellValue('AL15', 'Klasifikasi');
+        $sheet->getStyle('AL15')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AL16:AO17');
+        $sheet->setCellValue('AL16', $problem->classification); // Placeholder
+        $sheet->getStyle('AL16')->applyFromArray($centerStyle);
+        $sheet->getStyle('AP13')->applyFromArray($boldTextStyle);
 
-        $sheet->mergeCells('AE16:AF17');
-        $sheet->setCellValue('AE16', $problem->classification); // Placeholder
-        $sheet->getStyle('AE16')->applyFromArray($centerStyle);
-        $sheet->mergeCells('AG16:AI17');
-        $sheet->setCellValue('AG16', $problem->type_saibo); // Placeholder
-        $sheet->getStyle('AG16')->applyFromArray($centerStyle);
+        // TYPE SAIBO
+        $sheet->mergeCells('AP15:AS15');
+        $sheet->setCellValue('AP15', 'Tipe');
+        $sheet->getStyle('AP15')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AP16:AS17');
+        $sheet->setCellValue('AP16', $problem->type_saibo); // Placeholder
+        $sheet->getStyle('AP16')->applyFromArray($centerStyle);
+        $sheet->getStyle('AP13')->applyFromArray($boldTextStyle);
 
         // Pass Through
-        $sheet->mergeCells('AE18:AI18');
-        $sheet->setCellValue('AE18', 'Pass Through');
-        $sheet->getStyle('AE18')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AL18:AS18');
+        $sheet->setCellValue('AL18', 'Pass Through');
+        $sheet->getStyle('AL18')->applyFromArray($blueHeaderStyle);
 
-        // Manual mapping
-        $sheet->setCellValue('AE19', 'DF');
-        $sheet->setCellValue('AG19', 'PM');
-        $sheet->setCellValue('AE20', 'DD');
-        $sheet->setCellValue('AG20', 'MCH');
-        $sheet->setCellValue('AE21', 'CC');
-        $sheet->setCellValue('AG21', 'ASSY');
-        $sheet->setCellValue('AE22', 'DBSCA');
-        $sheet->setCellValue('AG22', 'TO');
+        // Manual mapping PASS TROUGH
+        $sheet->mergeCells('AL19:AN19');
+        $sheet->setCellValue('AL19', 'DF');
+        $sheet->mergeCells('AP19:AR19');
+        $sheet->setCellValue('AP19', 'PM');
+        $sheet->mergeCells('AL20:AN20');
+        $sheet->setCellValue('AL20', 'DD');
+        $sheet->mergeCells('AP20:AR20');
+        $sheet->setCellValue('AP20', 'MCH');
+        $sheet->mergeCells('AL21:AN21');
+        $sheet->setCellValue('AL21', 'CC');
+        $sheet->mergeCells('AP21:AR21');
+        $sheet->setCellValue('AP21', 'ASSY');
+        $sheet->mergeCells('AL22:AN22');
+        $sheet->setCellValue('AL22', 'TDA');
+        $sheet->mergeCells('AP22:AR22');
+        $sheet->setCellValue('AP22', 'TO');
 
         // Reject / Defect
-        $sheet->mergeCells('AE23:AI23');
-        $sheet->setCellValue('AE23', 'Reject / defect');
-        $sheet->getStyle('AE23')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('AE24:AF24');
-        $sheet->setCellValue('AE24', 'Problem');
-        $sheet->mergeCells('AG24:AI24');
-        $sheet->setCellValue('AG24', 'Reject / defect');
-        $sheet->getStyle('AG24')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AL23:AS23');
+        $sheet->setCellValue('AL23', 'Reject / defect');
+        $sheet->getStyle('AL23')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AL24:AN24');
+        $sheet->setCellValue('AL24', 'Problem');
+        $sheet->mergeCells('AO24:AS24');
+        $sheet->setCellValue('AO24', 'Reject / defect');
+        $sheet->getStyle('AO24')->applyFromArray($boldTextStyle);
 
         // Section In Charge
-        $sheet->mergeCells('AE25:AI25');
-        $sheet->setCellValue('AE25', 'Seksi In Charge');
-        $sheet->getStyle('AE25')->applyFromArray($blueHeaderStyle);
-        $sheet->mergeCells('AE26:AI28');
-        $sheet->getStyle('AE26')->applyFromArray($centerStyle);
-        $sheet->getStyle('AE26')->applyFromArray($boldTextStyle);
-        $sheet->setCellValue('AE26', $problem->seksiInCharge?->location_name);
+        $sheet->mergeCells('AL25:AS25');
+        $sheet->setCellValue('AL25', 'Seksi In Charge');
+        $sheet->getStyle('AL25')->applyFromArray($blueHeaderStyle);
+        $sheet->mergeCells('AL26:AS28');
+        $sheet->setCellValue('AL26', $problem->seksiInCharge?->location_name);
+        $sheet->getStyle('AL26')->applyFromArray($centerStyle);
+        $sheet->getStyle('AL26')->applyFromArray($boldTextStyle);
 
         // Kolom B
-        $sheet->mergeCells('B30:AI30');
+        $sheet->mergeCells('B30:AS30');
         $sheet->setCellValue('B30', 'Jadwal Tindakan Koreksi');
         $sheet->getStyle('B30')->applyFromArray($blueHeaderStyle);
+
         $sheet->mergeCells('B31:B33');
         $sheet->setCellValue('B31', 'NO');
         $sheet->getStyle('B31')->applyFromArray($centerStyle);
         $sheet->getStyle('B31')->applyFromArray($boldTextStyle);
+
+        for ($i = 1; $i < 11; $i++) {
+            $row = $i + 34;
+            $sheet->setCellValue("B{$row}", $i);
+        }
 
         // fill currative rows
         $sheet->mergeCells('C31:P33');
@@ -910,7 +1033,7 @@ class ProblemController extends Controller
         }
 
         // PIC rows
-        $sheet->mergeCells('Q31:T33');
+        $sheet->mergeCells('Q31:U33');
         $sheet->setCellValue('Q31', 'PIC');
         $sheet->getStyle('Q31')->applyFromArray($centerStyle);
         $sheet->getStyle('Q31')->applyFromArray($boldTextStyle);
@@ -918,138 +1041,148 @@ class ProblemController extends Controller
         // PIC Data (Rows 34-44)
         for ($i = 0; $i < 11; $i++) {
             $row = 34 + $i;
-            $sheet->mergeCells("Q{$row}:T{$row}");
+            $sheet->mergeCells("Q{$row}:U{$row}");
             if (isset($curatives[$i]) && $curatives[$i]->pic) {
                 $sheet->setCellValue("Q{$row}", $curatives[$i]->pic->location_name);
             }
         }
 
-        $sheet->mergeCells('U31:AF32');
-        $sheet->setCellValue('U31', 'Tanggal');
-        $sheet->getStyle('U31')->applyFromArray($centerStyle);
-        $sheet->mergeCells('U33:V33');
-        $sheet->setCellValue('U33', 'Siang');
-        $sheet->getStyle('U33')->applyFromArray($centerStyle);
-        $sheet->mergeCells('W33:X33');
-        $sheet->setCellValue('W33', 'Malam');
-        $sheet->getStyle('W33')->applyFromArray($centerStyle);
-        $sheet->mergeCells('Y33:Z33');
-        $sheet->setCellValue('Y33', 'Siang');
-        $sheet->getStyle('Y33')->applyFromArray($centerStyle);
-        $sheet->mergeCells('AA33:AB33');
-        $sheet->setCellValue('AA33', 'Malam');
-        $sheet->getStyle('AA33')->applyFromArray($centerStyle);
-        $sheet->mergeCells('AC33:AD33');
-        $sheet->setCellValue('AC33', 'Siang');
-        $sheet->getStyle('AC33')->applyFromArray($centerStyle);
-        $sheet->mergeCells('AE33:AF33');
-        $sheet->setCellValue('AE33', 'Malam');
-        $sheet->getStyle('AE33')->applyFromArray($centerStyle);
-        $sheet->mergeCells('U44:AF44');
-        $sheet->setCellValue('U44', 'Total Cost & Cost Material');
-        $sheet->getStyle('U44')->applyFromArray($centerStyle);
+        $sheet->mergeCells('V31:AK31');
+        $sheet->setCellValue('V31', 'Tanggal');
+        $sheet->getStyle('V31')->applyFromArray($centerStyle);
+        $sheet->mergeCells('V32:Y32');
+        $sheet->mergeCells('Z32:AC32');
+        $sheet->mergeCells('AD32:AG32');
+        $sheet->mergeCells('AH32:AK32');
+
+        $sheet->mergeCells('V33:W33');
+        $sheet->setCellValue('V33', 'Siang');
+        $sheet->getStyle('V33')->applyFromArray($centerStyle);
+        $sheet->mergeCells('X33:Y33');
+        $sheet->setCellValue('X33', 'Malam');
+        $sheet->getStyle('X33')->applyFromArray($centerStyle);
+        $sheet->mergeCells('Z33:AA33');
+        $sheet->setCellValue('Z33', 'Siang');
+        $sheet->getStyle('Z33')->applyFromArray($centerStyle);
+        $sheet->mergeCells('AB33:AC33');
+        $sheet->setCellValue('AB33', 'Malam');
+        $sheet->getStyle('AB33')->applyFromArray($centerStyle);
+        $sheet->mergeCells('AD33:AE33');
+        $sheet->setCellValue('AD33', 'Siang');
+        $sheet->getStyle('AD33')->applyFromArray($centerStyle);
+        $sheet->mergeCells('AF33:AG33');
+        $sheet->setCellValue('AF33', 'Malam');
+        $sheet->getStyle('AF33')->applyFromArray($centerStyle);
+        $sheet->mergeCells('AH33:AI33');
+        $sheet->setCellValue('AH33', 'Siang');
+        $sheet->getStyle('AH33')->applyFromArray($centerStyle);
+        $sheet->mergeCells('AJ33:AK33');
+        $sheet->setCellValue('AJ33', 'Malam');
+        $sheet->getStyle('AJ33')->applyFromArray($centerStyle);
+        $sheet->mergeCells('V44:AK44');
+        $sheet->setCellValue('V44', 'Total Cost & Cost Material');
+        $sheet->getStyle('V44')->applyFromArray($centerStyle);
 
 
-        $sheet->mergeCells('AG31:AG33');
-        $sheet->setCellValue('AG31', 'Hour');
-        $sheet->getStyle('AG31')->applyFromArray($centerStyle);
-        $sheet->getStyle('AG31')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AL31:AN33');
+        $sheet->setCellValue('AL31', 'Hour');
+        $sheet->getStyle('AL31')->applyFromArray($centerStyle);
+        $sheet->getStyle('AL31')->applyFromArray($boldTextStyle);
 
         for ($i = 0; $i < 11; $i++) {
             $row = 34 + $i;
+            $sheet->mergeCells("AL{$row}:AN{$row}");
             if (isset($curatives[$i]) && $curatives[$i]->pic) {
-                $sheet->setCellValue("AG{$row}", $curatives[$i]->hour);
-                $sheet->getStyle("AG{$row}")->getNumberFormat()->setFormatCode('0.00');
+                $sheet->setCellValue("AL{$row}", $curatives[$i]->hour);
+                $sheet->getStyle("AL{$row}")->getNumberFormat()->setFormatCode('0.00');
             }
         }
 
-        $sheet->mergeCells('AH31:AI33');
+        $sheet->mergeCells('AL44:AN44');
+        $sheet->setCellValue('AL44', '=SUM(AL34:AL43)');
+
+        $sheet->mergeCells('AO31:AS33');
+
 
         for ($i = 0; $i < 11; $i++) {
             $row = 34 + $i;
-            $sheet->mergeCells("AH{$row}:AI{$row}");
+            $sheet->mergeCells("AO{$row}:AS{$row}");
             if (isset($curatives[$i]) && $curatives[$i]->pic) {
-                $sheet->setCellValue("AH{$row}", $curatives[$i]->pic->rate * $curatives[$i]->hour);
-                $sheet->getStyle("AH{$row}")->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
+                $sheet->setCellValue("AO{$row}", $curatives[$i]->pic->rate * $curatives[$i]->hour);
+                $sheet->getStyle("AO{$row}")->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
             }
         }
 
-        $sheet->mergeCells('AH44:AI44');
-        $sheet->setCellValue('AH44', '=SUM(AH34:AH43)');
-        $sheet->getStyle('AH44')->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
+        $sheet->mergeCells('AO44:AS44');
+        $sheet->setCellValue('AO44', '=SUM(AO34:AO43)');
+        $sheet->getStyle('AO44')->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
         // End Kolom B
 
         // KOLOM C
-        $sheet->mergeCells('B46:T46');
+        $sheet->mergeCells('B46:AB46');
         $sheet->setCellValue('B46', 'Analisa Sebab Akibat');
         $sheet->getStyle('B46')->applyFromArray($blueHeaderStyle);
         $sheet->getStyle('B46')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('B47:Q66');
-        $sheet->mergeCells('R47:T59');
+        $sheet->mergeCells('B47:W66');
+        $sheet->mergeCells('X47:AB59');
 
-        $sheet->mergeCells('U46:AI46');
-        $sheet->setCellValue('U46', 'Perbaikan');
-        $sheet->getStyle('U46')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('U46')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AC46:AS46');
+        $sheet->setCellValue('AC46', 'Perbaikan');
+        $sheet->getStyle('AC46')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('AC46')->applyFromArray($boldTextStyle);
 
-        $sheet->mergeCells('U47:V47');
-        $sheet->setCellValue('U47', 'No');
-        $sheet->getStyle('U47')->applyFromArray($centerStyle);
-        $sheet->getStyle('U47')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('U48:V48');
-        $sheet->mergeCells('U49:V49');
-        $sheet->mergeCells('U50:V50');
-        $sheet->mergeCells('U51:V51');
-        $sheet->mergeCells('U52:V52');
-        $sheet->mergeCells('U53:V53');
-        $sheet->mergeCells('U54:V54');
-        $sheet->mergeCells('U55:V55');
-        $sheet->mergeCells('U56:V56');
-        $sheet->mergeCells('U57:V57');
-        $sheet->mergeCells('U58:V58');
-        $sheet->mergeCells('U59:V59');
+        $sheet->mergeCells('AC47:AD47');
+        $sheet->setCellValue('AC47', 'No');
+        $sheet->getStyle('AC47')->applyFromArray($centerStyle);
+        $sheet->getStyle('AC47')->applyFromArray($boldTextStyle);
+
+        for ($i = 1; $i < 12; $i++) {
+            $row = $i + 48;
+            $sheet->mergeCells("AC{$row}:AD{$row}");
+            $sheet->setCellValue("AC{$row}", $i);
+        }
 
         // penanggulangan
-        $sheet->mergeCells('W47:AG47');
-        $sheet->setCellValue('W47', 'Penanggulangan');
-        $sheet->getStyle('W47')->applyFromArray($centerStyle);
-        $sheet->getStyle('W47')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AE47:AN47');
+        $sheet->setCellValue('AE47', 'Penanggulangan');
+        $sheet->getStyle('AE47')->applyFromArray($centerStyle);
+        $sheet->getStyle('AE47')->applyFromArray($boldTextStyle);
         // Penanggulangan (Preventive) Data (Rows 48-59)
         $preventives = $problem->preventives;
         for ($i = 0; $i < 12; $i++) {
             $row = 48 + $i;
-            $sheet->mergeCells("W{$row}:AG{$row}");
+            $sheet->mergeCells("AE{$row}:AN{$row}");
             if (isset($preventives[$i])) {
-                $sheet->setCellValue("W{$row}", $preventives[$i]->preventive);
+                $sheet->setCellValue("AE{$row}", $preventives[$i]->preventive);
             }
         }
 
 
         // tanggal
-        $sheet->mergeCells('AH47:AI47');
-        $sheet->setCellValue('AH47', 'Tanggal');
-        $sheet->getStyle('AH47')->applyFromArray($centerStyle);
-        $sheet->getStyle('AH47')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AO47:AS47');
+        $sheet->setCellValue('AO47', 'Tanggal');
+        $sheet->getStyle('AO47')->applyFromArray($centerStyle);
+        $sheet->getStyle('AO47')->applyFromArray($boldTextStyle);
         // End Kolom C
 
         for ($i = 0; $i < 12; $i++) {
             $row = 48 + $i;
-            $sheet->mergeCells("AH{$row}:AI{$row}");
+            $sheet->mergeCells("AO{$row}:AS{$row}");
             if (isset($preventives[$i])) {
-                $sheet->setCellValue("AH{$row}", $preventives[$i]->created_at ? $preventives[$i]->created_at->format('d-M-Y') : '');
+                $sheet->setCellValue("AO{$row}", $preventives[$i]->created_at ? $preventives[$i]->created_at->format('d-M-Y') : '');
             }
         }
 
-        $sheet->mergeCells('S61:U61');
-        $sheet->setCellValue('S61', 'Rank');
-        $sheet->getStyle('S61')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('S61')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('S62:U66');
-        $sheet->setCellValue('S62', '=IF(AH44>1000000,"A",IF(AH44>=500000,"B",IF(AH44>=300000,"C","D")))');
-        $sheet->getStyle('S62')->applyFromArray($rankStyle);
+        $sheet->mergeCells('Y61:AB61');
+        $sheet->setCellValue('Y61', 'Rank');
+        $sheet->getStyle('Y61')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('Y61')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('Y62:AB66');
+        $sheet->setCellValue('Y62', '=IF(AH44>1000000,"A",IF(AH44>=500000,"B",IF(AH44>=300000,"C","D")))');
+        $sheet->getStyle('Y62')->applyFromArray($rankStyle);
 
         // CONDITIONAL FORMATTING RANK
-        $rankRange = 'S62:U66';
+        $rankRange = 'Y62:AB66';
         $makeCond = function (string $val, string $rgb) {
             $cond = new Conditional();
             $cond->setConditionType(Conditional::CONDITION_CONTAINSTEXT);
@@ -1074,50 +1207,51 @@ class ProblemController extends Controller
         $sheet->getStyle($rankRange)->setConditionalStyles([$condA, $condB, $condC, $condD]);
 
 
-        $sheet->mergeCells('V61:Y61');
-        $sheet->setCellValue('V61', 'Klasifikasi');
-        $sheet->getStyle('V61')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('V61')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('V62:Y66');
+        $sheet->mergeCells('AC61:AJ61');
+        $sheet->setCellValue('AC61', 'Klasifikasi');
+        $sheet->getStyle('AC61')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('AC61')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AC62:AJ66');
 
-        $sheet->mergeCells('AA61:AC61');
-        $sheet->setCellValue('AA61', 'Approved');
-        $sheet->getStyle('AA61')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('AA61')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('AA62:AC65');
-        $sheet->mergeCells('AA66:AC66');
-        $sheet->setCellValue('AA66', 'DpH');
-        $sheet->getStyle('AA66')->applyFromArray($centerStyle);
+        $sheet->mergeCells('AL61:AN61');
+        $sheet->setCellValue('AL61', 'Approved');
+        $sheet->getStyle('AL61')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('AL61')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AL62:AN65'); //FIELD
+        $sheet->mergeCells('AL66:AN66');
+        $sheet->setCellValue('AL66', 'DpH');
+        $sheet->getStyle('AL66')->applyFromArray($centerStyle);
 
 
-        $sheet->mergeCells('AD61:AF61');
-        $sheet->setCellValue('AD61', 'Checked');
-        $sheet->getStyle('AD61')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('AD61')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('AD62:AF65');
-        $sheet->mergeCells('AD66:AF66');
-        $sheet->setCellValue('AD66', 'SH');
-        $sheet->getStyle('AD66')->applyFromArray($centerStyle);
+        $sheet->mergeCells('AO61:AQ61');
+        $sheet->setCellValue('AO61', 'Checked');
+        $sheet->getStyle('AO61')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('AO61')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AO62:AQ65');
+        $sheet->mergeCells('AO66:AQ66');
+        $sheet->setCellValue('AO66', 'SH');
+        $sheet->getStyle('AO66')->applyFromArray($centerStyle);
 
-        $sheet->mergeCells('AG61:AI61');
-        $sheet->setCellValue('AG61', 'Prepared');
-        $sheet->getStyle('AG61')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('AG61')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('AG62:AI65');
-        $sheet->mergeCells('AG66:AI66');
-        $sheet->getStyle('AI66')->applyFromArray($centerStyle);
+        $sheet->mergeCells('AR61:AS61');
+        $sheet->setCellValue('AR61', 'Prepared');
+        $sheet->getStyle('AR61')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('AR61')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AR62:AS65');
+        $sheet->mergeCells('AR66:AS66');
+        $sheet->getStyle('AR66')->applyFromArray($centerStyle);
 
         // Apply Borders
-        $sheet->getStyle('B1:AC3')->applyFromArray($borderStyle);
-        $sheet->getStyle('AE1:AI3')->applyFromArray($borderStyle);
-        $sheet->getStyle('B5:AC7')->applyFromArray($borderStyle);
-        $sheet->getStyle('B9:AC28')->applyFromArray($borderStyle);
-        $sheet->getStyle('AE9:AI28')->applyFromArray($borderStyle);
-        $sheet->getStyle('B30:AI44')->applyFromArray($borderStyle);
-        $sheet->getStyle('B46:Q66')->applyFromArray($borderStyle);
-        $sheet->getStyle('R46:AI59')->applyFromArray($borderStyle);
-        $sheet->getStyle('S61:Y66')->applyFromArray($borderStyle);
-        $sheet->getStyle('AA61:AI66')->applyFromArray($borderStyle);
+        $sheet->getStyle('AK1:AS3')->applyFromArray($borderStyle);
+        $sheet->getStyle('B5:AB7')->applyFromArray($borderStyle);
+        $sheet->getStyle('AD5:AS7')->applyFromArray($borderStyle);
+        $sheet->getStyle('B9:AJ28')->applyFromArray($borderStyle);
+        $sheet->getStyle('AL9:AS28')->applyFromArray($borderStyle);
+        $sheet->getStyle('B30:AS44')->applyFromArray($borderStyle);
+        $sheet->getStyle('B46:AS46')->applyFromArray($borderStyle);
+        $sheet->getStyle('B47:W66')->applyFromArray($borderStyle);
+        $sheet->getStyle('X47:AS59')->applyFromArray($borderStyle);
+        $sheet->getStyle('Y61:AJ66')->applyFromArray($borderStyle);
+        $sheet->getStyle('AL61:AS66')->applyFromArray($borderStyle);
 
 
         return $this->downloadSpreadsheet($spreadsheet, $fileName);
@@ -1196,7 +1330,7 @@ class ProblemController extends Controller
         // =======================
         // Column widths (approx)
         // =======================
-        $sheet->getColumnDimension('A')->setWidth(2);   // MARGIN
+        // MARGIN
         $sheet->getColumnDimension('B')->setWidth(3);  // NO
         $sheet->getColumnDimension('C')->setWidth(16);  // NAME
         $sheet->getColumnDimension('D')->setWidth(28);  // FIELD

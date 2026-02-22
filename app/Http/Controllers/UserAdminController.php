@@ -87,4 +87,16 @@ class UserAdminController extends Controller
         $user->delete();
         return response()->json(['success' => true]);
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:users,id_user',
+        ]);
+
+        User::whereIn('id_user', $validated['ids'])->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

@@ -40,6 +40,13 @@
             dataSrc: ''
         },
         columns: [
+            {
+                data: 'id_kanban',
+                orderable: false,
+                render: function(data, type, row) {
+                    return `<input type="checkbox" class="form-check-input kanban-checkbox" value="${data}">`;
+                }
+            },
             { 
                 data: null, 
                 render: function (data, type, row, meta) {
@@ -115,6 +122,62 @@
 
   $(document).ready(function(){
     initTable();
+
+    // Select All functionality
+    $(document).on('change', '#selectAll', function() {
+        $('.kanban-checkbox').prop('checked', $(this).prop('checked'));
+        toggleBulkDeleteBtn();
+    });
+
+    // Individual checkbox change
+    $(document).on('change', '.kanban-checkbox', function() {
+        var totalCheckboxes = $('.kanban-checkbox').length;
+        var checkedCheckboxes = $('.kanban-checkbox:checked').length;
+        $('#selectAll').prop('checked', totalCheckboxes === checkedCheckboxes);
+        toggleBulkDeleteBtn();
+    });
+
+    // Toggle bulk delete button visibility
+    function toggleBulkDeleteBtn() {
+        var checkedCount = $('.kanban-checkbox:checked').length;
+        if (checkedCount > 0) {
+            $('#btnBulkDelete').removeClass('d-none');
+        } else {
+            $('#btnBulkDelete').addClass('d-none');
+        }
+    }
+
+    // Bulk Delete functionality
+    $('#btnBulkDelete').off('click').on('click', function() {
+        var ids = [];
+        $('.kanban-checkbox:checked').each(function() {
+            ids.push($(this).val());
+        });
+
+        if (ids.length === 0) return;
+
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Delete selected kanbans?',
+                text: `You are about to delete ${ids.length} kanbans.`,
+                showCancelButton: true,
+                cancelButtonText: 'Cancel',
+                confirmButtonText: 'Delete',
+            }).then(function(result){
+                if (result.isConfirmed) {
+                    ajax({ url: '/kanbans/bulk', method: 'DELETE', data: { ids: ids } }).done(function(){
+                        if (window.Swal) {
+                            Swal.fire({ icon: 'success', title: 'Kanbans Deleted', timer: 1200, showConfirmButton: false });
+                        }
+                        if (table) table.ajax.reload();
+                        $('#selectAll').prop('checked', false);
+                        toggleBulkDeleteBtn();
+                    });
+                }
+            });
+        }
+    });
 
     $('#btnKanbanAdd').off('click').on('click', function(){
       openKanbanModal('Add Kanban', null);

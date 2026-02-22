@@ -82,4 +82,14 @@ class KanbanController extends Controller
         $kanban->delete();
         return response()->json(['success' => true]);
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:kanbans,id_kanban',
+        ]);
+        Kanban::whereIn('id_kanban', $validated['ids'])->delete();
+        return response()->json(['success' => true]);
+    }
 }

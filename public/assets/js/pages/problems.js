@@ -171,28 +171,37 @@
 
     function toggleGroupCodeVisibility() {
         var type = currentProblemType();
-        var isMfg = (type === 'manufacturing');
+        var isMfg = type === "manufacturing";
         // Find the container for problem code inputs
         // The structure is col-md-12 -> mb-3 -> label + row(inputs)
         // We can find it via one of the inputs
-        var $container = $("#group_code_select").closest('.col-md-12');
-        
+        var $container = $("#group_code_select").closest(".col-md-12");
+
         if (isMfg) {
-            $container.addClass('d-none');
+            $container.addClass("d-none");
         } else {
-            $container.removeClass('d-none');
+            $container.removeClass("d-none");
         }
     }
 
     function buildDataUrl() {
-        var activeType = $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
+        var activeType =
+            $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
         var url = "/problems/list?type=" + encodeURIComponent(activeType);
 
-        if (currentFilter.project_id) url += "&project_id=" + encodeURIComponent(currentFilter.project_id);
-        if (currentFilter.kanban_id) url += "&kanban_id=" + encodeURIComponent(currentFilter.kanban_id);
-        if (currentFilter.group_code) url += "&group_code=" + encodeURIComponent(currentFilter.group_code);
-        if (currentFilter.start_date) url += "&start_date=" + encodeURIComponent(currentFilter.start_date);
-        if (currentFilter.end_date) url += "&end_date=" + encodeURIComponent(currentFilter.end_date);
+        if (currentFilter.project_id)
+            url +=
+                "&project_id=" + encodeURIComponent(currentFilter.project_id);
+        if (currentFilter.kanban_id)
+            url += "&kanban_id=" + encodeURIComponent(currentFilter.kanban_id);
+        if (currentFilter.group_code)
+            url +=
+                "&group_code=" + encodeURIComponent(currentFilter.group_code);
+        if (currentFilter.start_date)
+            url +=
+                "&start_date=" + encodeURIComponent(currentFilter.start_date);
+        if (currentFilter.end_date)
+            url += "&end_date=" + encodeURIComponent(currentFilter.end_date);
         return url;
     }
 
@@ -200,7 +209,8 @@
         if (!document.getElementById("table-problem")) return;
 
         var url = buildDataUrl();
-        var activeType = $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
+        var activeType =
+            $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
 
         // Logic: Manufacturing -> Use DataTables Excel Button (In Table)
         // Others -> Hide DataTables Excel Button
@@ -210,7 +220,7 @@
         if ($.fn.DataTable.isDataTable("#table-problem")) {
             var dt = $("#table-problem").DataTable();
             dt.ajax.url(url).load();
-            
+
             // Toggle DataTables Buttons
             if (dt.buttons) {
                 if (isMfg) {
@@ -224,7 +234,10 @@
 
         table = $("#table-problem").DataTable({
             dom: "Blfrtip",
-            lengthMenu: [ [10, 25, 50, -1], [10, 25, 50, "All"] ],
+            lengthMenu: [
+                [10, 25, 50, -1],
+                [10, 25, 50, "All"],
+            ],
             buttons: [
                 {
                     extend: "excelHtml5",
@@ -299,67 +312,105 @@
     }
 
     function addCurativeRow() {
-        var $clone = $('#curative-template .curative-row').clone();
-        $('#curative-container').append($clone);
+        var $clone = $("#curative-template .curative-row").clone();
+        $("#curative-container").append($clone);
     }
 
     function addPreventiveRow() {
-        var $clone = $('#preventive-template .preventive-row').clone();
-        $('#preventive-container').append($clone);
+        var $clone = $("#preventive-template .preventive-row").clone();
+        $("#preventive-container").append($clone);
     }
 
     function initGallery() {
         var $grid = $("#galleryGrid");
         if (!$grid.length) return;
 
-        $grid.html('<div class="col-12 text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+        $grid.html(
+            '<div class="col-12 text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>',
+        );
 
         var url = buildDataUrl();
-        $.getJSON(url).done(function(data) {
-            galleryData = data || [];
-            $grid.empty();
-            if (!data || data.length === 0) {
-                $grid.html('<div class="col-12 text-center text-muted py-5">No problems found.</div>');
-                return;
-            }
-
-            var count = 0;
-            (data || []).forEach(function(row) {
-                var img = null;
-                if (row.attachments && row.attachments.length > 0) {
-                    img = "/storage/" + row.attachments[0];
-                }
-                if (!img) {
+        $.getJSON(url)
+            .done(function (data) {
+                galleryData = data || [];
+                $grid.empty();
+                if (!data || data.length === 0) {
+                    $grid.html(
+                        '<div class="col-12 text-center text-muted py-5">No problems found.</div>',
+                    );
                     return;
                 }
-                count++;
-                var dateStr = row.created_at ? new Date(row.created_at).toLocaleDateString() : "-";
-                var col = $('<div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"></div>');
-                var card = $('<div class="card h-100 shadow-sm"></div>');
-                
-                var imgEl = $('<img class="card-img-top" alt="attachment" loading="lazy" style="height: 200px; object-fit: cover;">')
-                    .attr("src", img)
-                    .on('error', function() {
-                         $(this).replaceWith('<div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height: 200px;"><i class="bi bi-image-slash fs-1"></i></div>');
-                    });
 
-                var body = $('<div class="card-body d-flex flex-column"></div>');
-                var title = $('<h6 class="card-title text-truncate" title="' + (row.problem || "") + '"></h6>').text(row.problem || "-");
-                var date = $('<div class="text-muted small mb-3"></div>').text(dateStr);
-                var btn = $('<button class="btn btn-outline-primary btn-sm mt-auto w-100 btn-detail">Detail</button>').attr('data-id', row.id_problem);
-                
-                body.append(title).append(date).append(btn);
-                card.append(imgEl).append(body);
-                col.append(card);
-                $grid.append(col);
+                var count = 0;
+                (data || []).forEach(function (item) {
+                    var img = null;
+                    if (item.attachments && item.attachments.length > 0) {
+                        img = "/storage/" + item.attachments[0];
+                    }
+                    if (!img) {
+                        return;
+                    }
+                    count++;
+                    var dateStr = item.created_at
+                        ? new Date(item.created_at).toLocaleDateString()
+                        : "-";
+                    var col = $(
+                        '<div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"></div>',
+                    );
+                    var card = $('<div class="card h-100 shadow-sm"></div>');
+
+                    var imgEl = $(
+                        '<img class="card-img-top" alt="attachment" loading="lazy" style="height: 200px; object-fit: cover;">',
+                    )
+                        .attr("src", img)
+                        .on("error", function () {
+                            $(this).replaceWith(
+                                '<div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height: 200px;"><i class="bi bi-image-slash fs-1"></i></div>',
+                            );
+                        });
+
+                    var body = $(
+                        '<div class="card-body d-flex flex-column"></div>',
+                    );
+                    var title = $(
+                        '<h6 class="card-title text-truncate" title="' +
+                            (item.problem || "") +
+                            '"></h6>',
+                    ).text(item.problem || "-");
+                    var date = $(
+                        '<div class="text-muted small mb-3"></div>',
+                    ).text(dateStr);
+                    var btnRow = $('<div class="row g-2 mt-auto"></div>');
+                    var btnDetailCol = $('<div class="col-md-8"></div>');
+                    var btnExcelCol = $('<div class="col-md-4"></div>');
+                    var btnDetail = $(
+                        '<button class="btn btn-success btn-sm w-100 btn-detail">Detail</button>',
+                    ).attr("data-id", item.id_problem);
+                    var btnExcel = $(
+                        '<button class="btn btn-primary btn-sm w-100 btn-excel">Export</button>',
+                    ).attr("data-id", item.id_problem);
+
+                    btnDetailCol.append(btnDetail);
+                    btnExcelCol.append(btnExcel);
+                    btnRow.append(btnDetailCol).append(btnExcelCol);
+
+                    body.append(title).append(date).append(btnRow);
+                    card.append(imgEl).append(body);
+                    col.append(card);
+                    $grid.append(col);
+                });
+
+                if (count === 0) {
+                    $grid.html(
+                        '<div class="col-12 text-center text-muted py-5">No problems with attachments found.</div>',
+                    );
+                }
+            })
+            .fail(function () {
+                $grid.html(
+                    '<div class="col-12 text-center text-danger py-5">Failed to load data.</div>',
+                );
             });
-
-            if (count === 0) {
-                $grid.html('<div class="col-12 text-center text-muted py-5">No problems with attachments found.</div>');
-            }
-        }).fail(function() {
-             $grid.html('<div class="col-12 text-center text-danger py-5">Failed to load data.</div>');
-        });
     }
 
     function openProblemModal() {
@@ -372,8 +423,8 @@
             .append('<option value="">Select kanban</option>');
 
         // Reset Dynamic Rows
-        $('#curative-container').empty();
-        $('#preventive-container').empty();
+        $("#curative-container").empty();
+        $("#preventive-container").empty();
         addCurativeRow(); // Add one default row
 
         var activeType =
@@ -412,11 +463,15 @@
         initTable();
 
         // Dynamic Rows Handlers
-        $('#add-curative-btn').on('click', function() { addCurativeRow(); });
-        $('#add-preventive-btn').on('click', function() { addPreventiveRow(); });
-        
-        $(document).on('click', '.remove-row-btn', function() {
-            $(this).closest('.input-group').remove();
+        $("#add-curative-btn").on("click", function () {
+            addCurativeRow();
+        });
+        $("#add-preventive-btn").on("click", function () {
+            addPreventiveRow();
+        });
+
+        $(document).on("click", ".remove-row-btn", function () {
+            $(this).closest(".input-group").remove();
         });
 
         // Init Choices for Filter Modal
@@ -485,7 +540,10 @@
         }
 
         $(".nav-tabs .nav-link").on("shown.bs.tab", function (e) {
-            if ($("#problemsGalleryContainer").length && !$("#problemsGalleryContainer").hasClass("d-none")) {
+            if (
+                $("#problemsGalleryContainer").length &&
+                !$("#problemsGalleryContainer").hasClass("d-none")
+            ) {
                 initGallery();
             } else {
                 initTable();
@@ -496,10 +554,12 @@
         $("#btnFilterTable")
             .off("click")
             .on("click", function () {
-                var activeType = $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
+                var activeType =
+                    $(".nav-tabs .nav-link.active").data("type") ||
+                    "manufacturing";
 
                 // Set the type in the modal and disable it (context only)
-                $("#flt_type").val(activeType).prop('disabled', true);
+                $("#flt_type").val(activeType).prop("disabled", true);
 
                 // Set Dates
                 $("#flt_start_date").val(currentFilter.start_date || "");
@@ -507,23 +567,55 @@
 
                 // Reset logic for dependent selects
                 // We clear and reload based on currentFilter or empty
-                
-                if (fltProjectChoices) fltProjectChoices.setChoiceByValue(currentFilter.project_id ? currentFilter.project_id.toString() : "");
+
+                if (fltProjectChoices)
+                    fltProjectChoices.setChoiceByValue(
+                        currentFilter.project_id
+                            ? currentFilter.project_id.toString()
+                            : "",
+                    );
                 else $("#flt_project").val(currentFilter.project_id || "");
 
                 // Clear downstream
                 if (fltKanbanChoices) {
                     fltKanbanChoices.clearChoices();
-                    fltKanbanChoices.setChoices([{ value: "", label: "All Kanbans", selected: true, hidden: true }], "value", "label", true);
+                    fltKanbanChoices.setChoices(
+                        [
+                            {
+                                value: "",
+                                label: "All Kanbans",
+                                selected: true,
+                                hidden: true,
+                            },
+                        ],
+                        "value",
+                        "label",
+                        true,
+                    );
                 } else {
-                    $("#flt_kanban").html('<option value="">All Kanbans</option>');
+                    $("#flt_kanban").html(
+                        '<option value="">All Kanbans</option>',
+                    );
                 }
 
                 if (fltGroupCodeChoices) {
                     fltGroupCodeChoices.clearChoices();
-                    fltGroupCodeChoices.setChoices([{ value: "", label: "Select Group Code", selected: true }], "value", "label", true);
+                    fltGroupCodeChoices.setChoices(
+                        [
+                            {
+                                value: "",
+                                label: "Select Group Code",
+                                selected: true,
+                            },
+                        ],
+                        "value",
+                        "label",
+                        true,
+                    );
                 } else {
-                    $("#flt_group_code").html('<option value="">Select Group Code</option>');
+                    $("#flt_group_code").html(
+                        '<option value="">Select Group Code</option>',
+                    );
                 }
 
                 // If we have a project, we need to load kanbans
@@ -535,16 +627,39 @@
                         data: { project_id: projectId },
                     }).done(function (items) {
                         if (fltKanbanChoices) {
-                            var choices = [{ value: "", label: "All Kanbans", selected: true }];
+                            var choices = [
+                                {
+                                    value: "",
+                                    label: "All Kanbans",
+                                    selected: true,
+                                },
+                            ];
                             items.forEach(function (k) {
-                                choices.push({ value: k.id_kanban, label: k.kanban_name });
+                                choices.push({
+                                    value: k.id_kanban,
+                                    label: k.kanban_name,
+                                });
                             });
-                            fltKanbanChoices.setChoices(choices, "value", "label", true);
+                            fltKanbanChoices.setChoices(
+                                choices,
+                                "value",
+                                "label",
+                                true,
+                            );
                             // Restore selected kanban
-                            if (currentFilter.kanban_id) fltKanbanChoices.setChoiceByValue(currentFilter.kanban_id.toString());
+                            if (currentFilter.kanban_id)
+                                fltKanbanChoices.setChoiceByValue(
+                                    currentFilter.kanban_id.toString(),
+                                );
                         } else {
                             items.forEach(function (k) {
-                                $("#flt_kanban").append('<option value="' + k.id_kanban + '">' + k.kanban_name + "</option>");
+                                $("#flt_kanban").append(
+                                    '<option value="' +
+                                        k.id_kanban +
+                                        '">' +
+                                        k.kanban_name +
+                                        "</option>",
+                                );
                             });
                             $("#flt_kanban").val(currentFilter.kanban_id || "");
                         }
@@ -557,29 +672,57 @@
                     });
                 }
 
-                var modal = new bootstrap.Modal(document.getElementById("filterModal"));
+                var modal = new bootstrap.Modal(
+                    document.getElementById("filterModal"),
+                );
                 modal.show();
             });
 
         // Helper to load group codes
         function loadGroupCodes(type, projectId, kanbanId) {
-             if (!type || !projectId || !kanbanId) return;
-             
-             var url = "/api/problem-codes?type=" + encodeURIComponent(type) +
-                "&id_project=" + encodeURIComponent(projectId) +
-                "&id_kanban=" + encodeURIComponent(kanbanId);
+            if (!type || !projectId || !kanbanId) return;
+
+            var url =
+                "/api/problem-codes?type=" +
+                encodeURIComponent(type) +
+                "&id_project=" +
+                encodeURIComponent(projectId) +
+                "&id_kanban=" +
+                encodeURIComponent(kanbanId);
 
             $.getJSON(url).done(function (data) {
                 if (fltGroupCodeChoices) {
-                    var choices = [{ value: "", label: "Select Group Code", selected: true }];
+                    var choices = [
+                        {
+                            value: "",
+                            label: "Select Group Code",
+                            selected: true,
+                        },
+                    ];
                     (data || []).forEach(function (row) {
-                        if (row.code) choices.push({ value: row.code, label: row.code });
+                        if (row.code)
+                            choices.push({ value: row.code, label: row.code });
                     });
-                    fltGroupCodeChoices.setChoices(choices, "value", "label", true);
-                    if (currentFilter.group_code) fltGroupCodeChoices.setChoiceByValue(currentFilter.group_code);
+                    fltGroupCodeChoices.setChoices(
+                        choices,
+                        "value",
+                        "label",
+                        true,
+                    );
+                    if (currentFilter.group_code)
+                        fltGroupCodeChoices.setChoiceByValue(
+                            currentFilter.group_code,
+                        );
                 } else {
                     (data || []).forEach(function (row) {
-                        if (row.code) $("#flt_group_code").append('<option value="' + row.code + '">' + row.code + "</option>");
+                        if (row.code)
+                            $("#flt_group_code").append(
+                                '<option value="' +
+                                    row.code +
+                                    '">' +
+                                    row.code +
+                                    "</option>",
+                            );
                     });
                     $("#flt_group_code").val(currentFilter.group_code || "");
                 }
@@ -587,121 +730,202 @@
         }
 
         // Filter Modal: Project Change
-        $("#flt_project").off("change").on("change", function () {
-            var projectId = $(this).val();
+        $("#flt_project")
+            .off("change")
+            .on("change", function () {
+                var projectId = $(this).val();
 
-            // Reset Kanban
-            if (fltKanbanChoices) {
-                fltKanbanChoices.clearChoices();
-                fltKanbanChoices.setChoices([{ value: "", label: "All Kanbans", selected: true }], "value", "label", true);
-            } else {
-                $("#flt_kanban").html('<option value="">All Kanbans</option>');
-            }
+                // Reset Kanban
+                if (fltKanbanChoices) {
+                    fltKanbanChoices.clearChoices();
+                    fltKanbanChoices.setChoices(
+                        [{ value: "", label: "All Kanbans", selected: true }],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#flt_kanban").html(
+                        '<option value="">All Kanbans</option>',
+                    );
+                }
 
-            // Reset Group Code
-            if (fltGroupCodeChoices) {
-                fltGroupCodeChoices.clearChoices();
-                fltGroupCodeChoices.setChoices([{ value: "", label: "Select Group Code", selected: true }], "value", "label", true);
-            } else {
-                $("#flt_group_code").html('<option value="">Select Group Code</option>');
-            }
+                // Reset Group Code
+                if (fltGroupCodeChoices) {
+                    fltGroupCodeChoices.clearChoices();
+                    fltGroupCodeChoices.setChoices(
+                        [
+                            {
+                                value: "",
+                                label: "Select Group Code",
+                                selected: true,
+                            },
+                        ],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#flt_group_code").html(
+                        '<option value="">Select Group Code</option>',
+                    );
+                }
 
-            if (projectId) {
-                ajax({
-                    url: "/kanbans/list",
-                    method: "GET",
-                    data: { project_id: projectId },
-                }).done(function (items) {
-                    if (fltKanbanChoices) {
-                        var choices = [{ value: "", label: "All Kanbans", selected: true }];
-                        items.forEach(function (k) {
-                            choices.push({ value: k.id_kanban, label: k.kanban_name });
-                        });
-                        fltKanbanChoices.setChoices(choices, "value", "label", true);
-                    } else {
-                        items.forEach(function (k) {
-                            $("#flt_kanban").append('<option value="' + k.id_kanban + '">' + k.kanban_name + "</option>");
-                        });
-                    }
-                });
-            }
-        });
+                if (projectId) {
+                    ajax({
+                        url: "/kanbans/list",
+                        method: "GET",
+                        data: { project_id: projectId },
+                    }).done(function (items) {
+                        if (fltKanbanChoices) {
+                            var choices = [
+                                {
+                                    value: "",
+                                    label: "All Kanbans",
+                                    selected: true,
+                                },
+                            ];
+                            items.forEach(function (k) {
+                                choices.push({
+                                    value: k.id_kanban,
+                                    label: k.kanban_name,
+                                });
+                            });
+                            fltKanbanChoices.setChoices(
+                                choices,
+                                "value",
+                                "label",
+                                true,
+                            );
+                        } else {
+                            items.forEach(function (k) {
+                                $("#flt_kanban").append(
+                                    '<option value="' +
+                                        k.id_kanban +
+                                        '">' +
+                                        k.kanban_name +
+                                        "</option>",
+                                );
+                            });
+                        }
+                    });
+                }
+            });
 
         // Filter Modal: Kanban Change -> Load Group Codes
-        $("#flt_kanban").off("change").on("change", function () {
-            var type = $("#flt_type").val();
-            var projectId = $("#flt_project").val();
-            var kanbanId = $(this).val();
+        $("#flt_kanban")
+            .off("change")
+            .on("change", function () {
+                var type = $("#flt_type").val();
+                var projectId = $("#flt_project").val();
+                var kanbanId = $(this).val();
 
-            // Reset Group Code
-            if (fltGroupCodeChoices) {
-                fltGroupCodeChoices.clearChoices();
-                fltGroupCodeChoices.setChoices([{ value: "", label: "Select Group Code", selected: true }], "value", "label", true);
-            } else {
-                $("#flt_group_code").html('<option value="">Select Group Code</option>');
-            }
+                // Reset Group Code
+                if (fltGroupCodeChoices) {
+                    fltGroupCodeChoices.clearChoices();
+                    fltGroupCodeChoices.setChoices(
+                        [
+                            {
+                                value: "",
+                                label: "Select Group Code",
+                                selected: true,
+                            },
+                        ],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#flt_group_code").html(
+                        '<option value="">Select Group Code</option>',
+                    );
+                }
 
-            if (type && projectId && kanbanId) {
-                loadGroupCodes(type, projectId, kanbanId);
-            }
-        });
+                if (type && projectId && kanbanId) {
+                    loadGroupCodes(type, projectId, kanbanId);
+                }
+            });
 
         // Reset Filter Logic
-        $("#btnResetFilter").off("click").on("click", function () {
-            // Reset currentFilter object
-            currentFilter = {};
+        $("#btnResetFilter")
+            .off("click")
+            .on("click", function () {
+                // Reset currentFilter object
+                currentFilter = {};
 
-            // Reset UI Inputs
-            if (fltProjectChoices) {
-                fltProjectChoices.setChoiceByValue("");
-            } else {
-                $("#flt_project").val("");
-            }
+                // Reset UI Inputs
+                if (fltProjectChoices) {
+                    fltProjectChoices.setChoiceByValue("");
+                } else {
+                    $("#flt_project").val("");
+                }
 
-            // Reset Kanban
-            if (fltKanbanChoices) {
-                fltKanbanChoices.clearChoices();
-                fltKanbanChoices.setChoices([{ value: "", label: "All Kanbans", selected: true }], "value", "label", true);
-            } else {
-                $("#flt_kanban").html('<option value="">All Kanbans</option>');
-            }
+                // Reset Kanban
+                if (fltKanbanChoices) {
+                    fltKanbanChoices.clearChoices();
+                    fltKanbanChoices.setChoices(
+                        [{ value: "", label: "All Kanbans", selected: true }],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#flt_kanban").html(
+                        '<option value="">All Kanbans</option>',
+                    );
+                }
 
-            // Reset Group Code
-            if (fltGroupCodeChoices) {
-                fltGroupCodeChoices.clearChoices();
-                fltGroupCodeChoices.setChoices([{ value: "", label: "Select Group Code", selected: true }], "value", "label", true);
-            } else {
-                $("#flt_group_code").html('<option value="">Select Group Code</option>');
-            }
+                // Reset Group Code
+                if (fltGroupCodeChoices) {
+                    fltGroupCodeChoices.clearChoices();
+                    fltGroupCodeChoices.setChoices(
+                        [
+                            {
+                                value: "",
+                                label: "Select Group Code",
+                                selected: true,
+                            },
+                        ],
+                        "value",
+                        "label",
+                        true,
+                    );
+                } else {
+                    $("#flt_group_code").html(
+                        '<option value="">Select Group Code</option>',
+                    );
+                }
 
-            // Reset Dates
-            $("#flt_start_date").val("");
-            $("#flt_end_date").val("");
+                // Reset Dates
+                $("#flt_start_date").val("");
+                $("#flt_end_date").val("");
 
-            // Reload Table
-            initTable();
+                // Reload Table
+                initTable();
 
-            // Close modal
-            var modalEl = document.getElementById("filterModal");
-            var modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
-        });
+                // Close modal
+                var modalEl = document.getElementById("filterModal");
+                var modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            });
 
         // Apply Filter Logic
-        $("#btnApplyFilter").off("click").on("click", function () {
-            currentFilter.project_id = $("#flt_project").val();
-            currentFilter.kanban_id = $("#flt_kanban").val();
-            currentFilter.group_code = $("#flt_group_code").val();
-            currentFilter.start_date = $("#flt_start_date").val();
-            currentFilter.end_date = $("#flt_end_date").val();
+        $("#btnApplyFilter")
+            .off("click")
+            .on("click", function () {
+                currentFilter.project_id = $("#flt_project").val();
+                currentFilter.kanban_id = $("#flt_kanban").val();
+                currentFilter.group_code = $("#flt_group_code").val();
+                currentFilter.start_date = $("#flt_start_date").val();
+                currentFilter.end_date = $("#flt_end_date").val();
 
-            initTable();
+                initTable();
 
-            // Close modal
-            var modalEl = document.getElementById("filterModal");
-            var modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
-        });
+                // Close modal
+                var modalEl = document.getElementById("filterModal");
+                var modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            });
 
         $("#btnProblemAdd")
             .off("click")
@@ -864,17 +1088,23 @@
                 }
                 var problem = $("#p_problem").val().trim();
                 var cause = $("#p_cause").val().trim();
-                
+
                 // Collect Dynamic Rows
                 var curatives = [];
                 var curativePics = [];
                 var curativeHours = [];
-                $('#curative-container .curative-row').each(function() {
-                    var action = $(this).find('input[name="curative_actions[]"]').val();
-                    var hour = $(this).find('input[name="curative_hours[]"]').val();
-                    var pic = $(this).find('select[name="curative_pics[]"]').val();
-                    
-                    if(action && action.trim() !== "") {
+                $("#curative-container .curative-row").each(function () {
+                    var action = $(this)
+                        .find('input[name="curative_actions[]"]')
+                        .val();
+                    var hour = $(this)
+                        .find('input[name="curative_hours[]"]')
+                        .val();
+                    var pic = $(this)
+                        .find('select[name="curative_pics[]"]')
+                        .val();
+
+                    if (action && action.trim() !== "") {
                         curatives.push(action.trim());
                         curativePics.push(pic);
                         curativeHours.push(hour);
@@ -882,21 +1112,23 @@
                 });
 
                 var preventives = [];
-                $('#preventive-container .preventive-row').each(function() {
-                    var $input = $(this).find('input');
+                $("#preventive-container .preventive-row").each(function () {
+                    var $input = $(this).find("input");
                     if ($input.length > 0) {
                         var val = $input.val();
                         var action = val ? val.trim() : "";
-                        if(action) preventives.push(action);
+                        if (action) preventives.push(action);
                     }
                 });
 
                 var machineId = $("#p_machine").val();
                 var typeSaibo = $("#p_type_saibo").val();
                 var classification = $("#p_classification").val();
+                var classificationProblem = $(
+                    "#p_classification_problem",
+                ).val();
                 var stage = $("#p_stage").val();
                 var seksiInCharge = $("#p_seksi_in_charge").val();
-                
 
                 var formData = new FormData();
 
@@ -1022,7 +1254,7 @@
                 var groupSuffix = $("#group_code_suffix").val().trim();
                 var fullCode = $("#group_code").val().trim();
 
-                if (type !== 'manufacturing') {
+                if (type !== "manufacturing") {
                     if (!groupMode) {
                         if (window.Swal)
                             Swal.fire({
@@ -1056,7 +1288,10 @@
                                     icon: "error",
                                     title: "Please input suffix for new Problem Code",
                                 });
-                            else alert("Please input suffix for new Problem Code");
+                            else
+                                alert(
+                                    "Please input suffix for new Problem Code",
+                                );
                             return;
                         }
                         if (!fullCode) {
@@ -1077,24 +1312,29 @@
                 formData.append("type", type);
                 formData.append("problem", problem);
                 formData.append("cause", cause);
-                
+
                 // Append Arrays
-                curatives.forEach(function(c, i) {
-                    formData.append('curative_actions[]', c);
-                    formData.append('curative_pics[]', curativePics[i] || '');
-                    formData.append('curative_hours[]', curativeHours[i] || '');
+                curatives.forEach(function (c, i) {
+                    formData.append("curative_actions[]", c);
+                    formData.append("curative_pics[]", curativePics[i] || "");
+                    formData.append("curative_hours[]", curativeHours[i] || "");
                 });
-                preventives.forEach(function(p) {
-                    formData.append('preventive_actions[]', p);
+                preventives.forEach(function (p) {
+                    formData.append("preventive_actions[]", p);
                 });
-                
 
                 if (machineId) formData.append("id_machine", machineId);
                 if (typeSaibo) formData.append("type_saibo", typeSaibo);
-                if (classification) formData.append("classification", classification);
+                if (classification)
+                    formData.append("classification", classification);
+                if (classificationProblem)
+                    formData.append(
+                        "classification_problem",
+                        classificationProblem,
+                    );
                 if (stage) formData.append("stage", stage);
-                if (seksiInCharge) formData.append("id_seksi_in_charge", seksiInCharge);
-                
+                if (seksiInCharge)
+                    formData.append("id_seksi_in_charge", seksiInCharge);
 
                 var $btn = $("#saveProblem");
                 $btn.prop("disabled", true);
@@ -1272,9 +1512,12 @@
             $("#d_machine").val(row.id_machine || "");
             $("#d_type_saibo").val(row.type_saibo || "");
             $("#d_classification").val(row.classification || "");
+            $("#d_classification_problem").val(
+                row.classification_problem || "",
+            );
             $("#d_stage").val(row.stage || "");
             $("#d_seksi_in_charge").val(row.id_seksi_in_charge || "");
-            
+
             $("#d_type").val(row.raw_type || "manufacturing");
             $("#d_status").val(row.status || "in_progress");
             $("#d_reporter").val(row.reporter || "-");
@@ -1293,10 +1536,17 @@
             if (row.curatives && row.curatives.length > 0) {
                 row.curatives.forEach(function (c) {
                     var $row = $("#d_curative_template").children().clone();
-                    $row.find('input[name="curative_actions[]"]').val(c.curative).prop('disabled', true);
-                    $row.find('input[name="curative_hours[]"]').val(c.hour || "").prop('disabled', true);
-                    $row.find('select[name="curative_pics[]"]').val(c.id_pic || "").prop('disabled', true);
-                    $row.find('.d-remove-row-btn').addClass('d-none');
+                    var hourVal = c.hour != null ? c.hour : "";
+                    $row.find('input[name="curative_actions[]"]')
+                        .val(c.curative)
+                        .prop("disabled", true);
+                    $row.find('input[name="curative_hours[]"]')
+                        .val(hourVal)
+                        .prop("disabled", true);
+                    $row.find('select[name="curative_pics[]"]')
+                        .val(c.id_pic || "")
+                        .prop("disabled", true);
+                    $row.find(".d-remove-row-btn").addClass("d-none");
                     $("#d_curative_container").append($row);
                 });
             }
@@ -1305,8 +1555,10 @@
             if (row.preventives && row.preventives.length > 0) {
                 row.preventives.forEach(function (p) {
                     var $row = $("#d_preventive_template").children().clone();
-                    $row.find('input[name="preventive_actions[]"]').val(p.preventive).prop('disabled', true);
-                    $row.find('.d-remove-row-btn').addClass('d-none');
+                    $row.find('input[name="preventive_actions[]"]')
+                        .val(p.preventive)
+                        .prop("disabled", true);
+                    $row.find(".d-remove-row-btn").addClass("d-none");
                     $("#d_preventive_container").append($row);
                 });
             }
@@ -1324,6 +1576,7 @@
             $(
                 "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_type, #d_problem, #d_cause, #d_curative, #d_preventive, #d_status",
             ).prop("disabled", true);
+            $("#d_add_curative_btn, #d_add_preventive_btn").addClass("d-none");
 
             // Generate carousel for attachments
             var attachments = [];
@@ -1594,17 +1847,22 @@
             $(this).addClass("d-none");
             $("#btn-save-problem").removeClass("d-none");
             $(
-                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_stage, #d_seksi_in_charge, #d_type, #d_problem, #d_cause, #d_status",
+                "#d_project, #d_kanban, #d_item, #d_location, #d_machine, #d_type_saibo, #d_classification, #d_classification_problem, #d_stage, #d_seksi_in_charge, #d_type, #d_problem, #d_cause, #d_status",
             ).prop("disabled", false);
 
             // Enable dynamic lists
-            $("#d_curative_container input, #d_curative_container select").prop("disabled", false);
+            $("#d_curative_container input, #d_curative_container select").prop(
+                "disabled",
+                false,
+            );
             $("#d_preventive_container input").prop("disabled", false);
             $(".d-remove-row-btn").removeClass("d-none");
-            $("#d_add_curative_btn, #d_add_preventive_btn").removeClass("d-none");
+            $("#d_add_curative_btn, #d_add_preventive_btn").removeClass(
+                "d-none",
+            );
 
             var type = $("#d_type").val();
-            if (type === 'manufacturing') return; // Skip group code logic for manufacturing
+            if (type === "manufacturing") return; // Skip group code logic for manufacturing
 
             var existingCode = $("#d_group_code").val();
             if (!existingCode) {
@@ -1641,18 +1899,26 @@
             var curativePics = [];
             var curativeHours = [];
             $("#d_curative_container .d-curative-row").each(function () {
-                var val = $(this).find('input[name="curative_actions[]"]').val();
-                if(val) {
+                var val = $(this)
+                    .find('input[name="curative_actions[]"]')
+                    .val();
+                if (val) {
                     curatives.push(val);
-                    curativePics.push($(this).find('select[name="curative_pics[]"]').val());
-                    curativeHours.push($(this).find('input[name="curative_hours[]"]').val());
+                    curativePics.push(
+                        $(this).find('select[name="curative_pics[]"]').val(),
+                    );
+                    curativeHours.push(
+                        $(this).find('input[name="curative_hours[]"]').val(),
+                    );
                 }
             });
 
             var preventives = [];
             $("#d_preventive_container .d-preventive-row").each(function () {
-                var val = $(this).find('input[name="preventive_actions[]"]').val();
-                if(val) preventives.push(val);
+                var val = $(this)
+                    .find('input[name="preventive_actions[]"]')
+                    .val();
+                if (val) preventives.push(val);
             });
 
             var data = {
@@ -1663,19 +1929,20 @@
                 id_machine: $("#d_machine").val(),
                 type_saibo: $("#d_type_saibo").val(),
                 classification: $("#d_classification").val(),
+                classification_problem: $("#d_classification_problem").val(),
                 stage: $("#d_stage").val(),
                 id_seksi_in_charge: $("#d_seksi_in_charge").val(),
-                
+
                 type: $("#d_type").val(),
                 status: $("#d_status").val(),
                 problem: $("#d_problem").val(),
                 cause: $("#d_cause").val(),
-                curative: curatives.join('\n'),
-                preventive: preventives.join('\n'),
+                curative: curatives.join("\n"),
+                preventive: preventives.join("\n"),
                 curative_actions: curatives,
                 curative_pics: curativePics,
                 curative_hours: curativeHours,
-                preventive_actions: preventives
+                preventive_actions: preventives,
             };
 
             // Check if we are updating group code

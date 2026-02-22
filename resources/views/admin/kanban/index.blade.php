@@ -22,6 +22,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Kanbans</h5>
                         <div class="d-flex align-items-center gap-2">
+                            <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
                             <button id="btnKanbanAdd" class="btn btn-primary">Add Kanban</button>
                         </div>
                     </div>

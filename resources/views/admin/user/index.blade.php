@@ -16,7 +16,10 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Users</h5>
-                        <button id="btnUserAdd" class="btn btn-primary">Add User</button>
+                        <div>
+                            <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
+                            <button id="btnUserAdd" class="btn btn-primary">Add User</button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div id="usersTableContainer"></div>

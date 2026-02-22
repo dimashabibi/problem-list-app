@@ -9,6 +9,8 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\UserAdminController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 
 use App\Http\Controllers\DashboardController;
 
@@ -19,6 +21,21 @@ Route::get('/', function () {
 Route::get('/login', [LoginController::class, 'show'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+// Password Reset Routes
+Route::prefix('auth')->group(function () {
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])
+        ->name('password.email')
+        ->middleware('throttle:5,1');
+    Route::post('/reset-password', [ResetPasswordController::class, 'reset'])
+        ->name('password.update')
+        ->middleware('throttle:10,1');
+});
+
+// Optional: Reset password form page
+Route::get('/reset-password', [ResetPasswordController::class, 'showResetForm'])
+    ->name('password.reset')
+    ->middleware('throttle:10,1');
 
 Route::get('/problems/create', [ProblemController::class, 'create'])->name('problems.create');
 
@@ -46,6 +63,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/kanbans/bulk', [KanbanController::class, 'bulkStore'])->name('kanbans.bulk');
     Route::put('/kanbans/{id}', [KanbanController::class, 'update'])->name('kanbans.update');
     Route::delete('/kanbans/{id}', [KanbanController::class, 'destroy'])->name('kanbans.destroy');
+    Route::delete('/kanbans/bulk', [KanbanController::class, 'bulkDestroy'])->name('kanbans.bulk');
 
     Route::get('/admin/locations', [LocationController::class, 'index'])->name('admin.locations.index');
     Route::get('/admin/locations/table', [LocationController::class, 'table'])->name('admin.locations.table');
@@ -54,6 +72,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/locations/bulk', [LocationController::class, 'bulkStore'])->name('locations.bulk');
     Route::put('/locations/{id}', [LocationController::class, 'update'])->name('locations.update');
     Route::delete('/locations/{id}', [LocationController::class, 'destroy'])->name('locations.destroy');
+    Route::delete('/locations/bulk', [LocationController::class, 'bulkDestroy'])->name('locations.bulk.destroy');
 
     Route::get('/admin/items', [ItemController::class, 'index'])->name('admin.items.index');
     Route::get('/admin/items/table', [ItemController::class, 'table'])->name('admin.items.table');
@@ -70,6 +89,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/users', [UserAdminController::class, 'store'])->name('users.store');
     Route::put('/users/{id}', [UserAdminController::class, 'update'])->name('users.update');
     Route::delete('/users/{id}', [UserAdminController::class, 'destroy'])->name('users.destroy');
+    Route::delete('/users/bulk', [UserAdminController::class, 'bulkDestroy'])->name('users.bulk.destroy');
 
     Route::get('/admin/problems', [ProblemController::class, 'index'])->name('admin.problems.index');
     Route::get('/admin/problems/table', [ProblemController::class, 'table'])->name('admin.problems.table');
@@ -88,4 +108,5 @@ Route::middleware('auth')->group(function () {
     Route::post('/machines/store', [MachineController::class, 'store'])->name('machines.store');
     Route::put('/machines/{id}', [MachineController::class, 'update'])->name('machines.update');
     Route::delete('/machines/{id}', [MachineController::class, 'destroy'])->name('machines.destroy');
+    Route::delete('/machines/bulk', [MachineController::class, 'bulkDestroy'])->name('machines.bulk.destroy');
 });

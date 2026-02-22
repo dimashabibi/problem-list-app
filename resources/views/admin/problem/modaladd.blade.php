@@ -118,6 +118,90 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
+                                <label class="form-label">Classification Problem</label>
+                                <select class="form-control" id="p_classification_problem">
+                                    <option value="">Select classification problem</option>
+                                    <option value="DD  -Construction Making">DD -Construction Making</option>
+                                    <option value="DD - Stock List">DD - Stock List</option>
+                                    <option value="DD - Shutter making">DD - Shutter making</option>
+                                    <option value="DD - Construction Interference">DD - Construction Interference
+                                    </option>
+                                    <option value="DD - Global STD implementation">DD - Global STD implementation
+                                    </option>
+                                    <option value="DD - Component library">DD - Component library</option>
+                                    <option value="DD - Dataout">DD - Dataout</option>
+                                    <option value="DD - Machining Attribute">DD - Machining Attribute</option>
+                                    <option value="DD - CAD Data Using">DD - CAD Data Using</option>
+                                    <option value="PM - Component installation">PM - Component installation</option>
+                                    <option value="PM - Material assy">PM - Material assy</option>
+                                    <option value="PM - Handwork">PM - Handwork</option>
+                                    <option value="PM - Identity marking">PM - Identity marking</option>
+                                    <option value="PM - NC slice">PM - NC slice</option>
+                                    <option value="CC - DIE - ncdata process area">CC - DIE - ncdata process area
+                                    </option>
+                                    <option value="CC - DIE - G-Code ">CC - DIE - G-Code </option>
+                                    <option value="CC - DIE - ncdata allowance">CC - DIE - ncdata allowance</option>
+                                    <option value="CC - DIE - ncdata interference">CC - DIE - ncdata interference
+                                    </option>
+                                    <option value="CC - DIE - ncdata amount">CC - DIE - ncdata amount</option>
+                                    <option value="CC - DIE - Overtravel data">CC - DIE - Overtravel data</option>
+                                    <option value="CC - BN - ncdata process area">CC - BN - ncdata process area
+                                    </option>
+                                    <option value="CC - BN - G-Code ">CC - BN - G-Code </option>
+                                    <option value="CC - BN - ncdata allowance">CC - BN - ncdata allowance</option>
+                                    <option value="CC - BN - ncdata interference">CC - BN - ncdata interference
+                                    </option>
+                                    <option value="CC - BN - ncdata amount">CC - BN - ncdata amount</option>
+                                    <option value="CC - BN - Overtravel data">CC - BN - Overtravel data</option>
+                                    <option value="CC - KN - ncdata process area">CC - KN - ncdata process area
+                                    </option>
+                                    <option value="CC - KN - G-Code ">CC - KN - G-Code </option>
+                                    <option value="CC - KN - ncdata allowance">CC - KN - ncdata allowance</option>
+                                    <option value="CC - KN - ncdata interference">CC - KN - ncdata interference
+                                    </option>
+                                    <option value="CC - KN - ncdata amount">CC - KN - ncdata amount</option>
+                                    <option value="CC - KN - Overtravel data">CC - KN - Overtravel data</option>
+                                    <option value="Mch - manual process">Mch - manual process</option>
+                                    <option value="Mch - Datum setting">Mch - Datum setting</option>
+                                    <option value="Mch - Machine Performance">Mch - Machine Performance</option>
+                                    <option value="Mch - Dandori">Mch - Dandori</option>
+                                    <option value="Mch - ncdata offset">Mch - ncdata offset</option>
+                                    <option value="Mch - Ncdata transfer">Mch - Ncdata transfer</option>
+                                    <option value="Mch - Dimension check">Mch - Dimension check</option>
+                                    <option value="Mch - Tool using">Mch - Tool using</option>
+                                    <option value="DBCCA - Component order">DBCCA - Component order</option>
+                                    <option value="DBCCA - Component arrival time">DBCCA - Component arrival time
+                                    </option>
+                                    <option value="DBCCA - Component amount">DBCCA - Component amount</option>
+                                    <option value="DF - Surface model">DF - Surface model</option>
+                                    <option value="DF - Profile">DF - Profile</option>
+                                    <option value="QOH-Equipment">QOH-Equipment</option>
+                                    <option value="QOH-X File">QOH-X File</option>
+                                    <option value="QOH-Standard">QOH-Standard</option>
+                                    <option value="QOH-Process">QOH-Process</option>
+                                    <option value="QOH-Misc Judgement">QOH-Misc Judgement</option>
+                                    <option value="Casting - blow hole">Casting - blow hole</option>
+                                    <option value="casting - material minus">casting - material minus</option>
+                                    <option value="DMCA-Distribution">DMCA-Distribution</option>
+                                    <option value="DMCA-Scheduling">DMCA-Scheduling</option>
+                                    <option value="DEng-Equipment">DEng-Equipment</option>
+                                    <option value="DEng-X File">DEng-X File</option>
+                                    <option value="DEng-Standard">DEng-Standard</option>
+                                    <option value="DEng-Process">DEng-Process</option>
+                                    <option value="DEng-Misc Judgement">DEng-Misc Judgement</option>
+                                    <option value="DAT - Assy Insert">DAT - Assy Insert</option>
+                                    <option value="DAT - Assy komponen">DAT - Assy komponen</option>
+                                    <option value="DAT - Welding  blow hole">DAT - Welding blow hole</option>
+                                    <option value="DAT - Assy shutter">DAT - Assy shutter</option>
+                                    <option value="DAT - Interference komponen">DAT - Interference komponen</option>
+                                    <option value="DAT - Polishing">DAT - Polishing</option>
+                                    <option value="DAT - Flame hard (HRC)">DAT - Flame hard (HRC)</option>
+                                    <option value="DAT - Tightening bolt">DAT - Tightening bolt</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
                                 <label class="form-label">Seksi In Charge</label>
                                 <select class="form-control" id="p_seksi_in_charge">
                                     <option value="">Select seksi</option>
@@ -127,7 +211,7 @@
                                 </select>
                             </div>
                         </div>
-                       
+
                         <div class="col-md-12">
                             <div class="mb-3">
                                 <label class="form-label d-block">Type</label>
@@ -234,8 +318,8 @@
                                 <div class="input-group mb-2 curative-row">
                                     <input type="text" class="form-control" name="curative_actions[]"
                                         placeholder="Curative Action" required>
-                                    <input type="number" class="form-control" name="curative_hours[]"
-                                        placeholder="Hour" style="max-width: 100px;">
+                                    <input type="number" step="0.01" class="form-control"
+                                        name="curative_hours[]" placeholder="Hour" style="max-width: 100px;">
                                     <select class="form-select" name="curative_pics[]" style="max-width: 200px;">
                                         <option value="">Select PIC</option>
                                         @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
@@ -243,7 +327,7 @@
                                         @endforeach
                                     </select>
                                     <button type="button" class="btn btn-outline-danger remove-row-btn">
-                                        <i class="bi bi-trash"></i>
+                                        <i data-lucide="trash"></i>
                                     </button>
                                 </div>
                             </div>
@@ -253,7 +337,7 @@
                                     <input type="text" class="form-control" name="preventive_actions[]"
                                         placeholder="Preventive Action" required>
                                     <button type="button" class="btn btn-outline-danger remove-row-btn">
-                                        <i class="bi bi-trash"></i>
+                                        <i data-lucide="trash"></i>
                                     </button>
                                 </div>
                             </div>

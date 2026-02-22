@@ -21,7 +21,10 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Locations</h5>
-                        <button id="btnLocationAdd" class="btn btn-primary">Add Location</button>
+                        <div>
+                            <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
+                            <button id="btnLocationAdd" class="btn btn-primary">Add Location</button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div id="locationsTableContainer"></div>

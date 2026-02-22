@@ -31,7 +31,13 @@ class Problem extends Model
         'classification',
         'stage',
         'id_seksi_in_charge',
+        'classification_problem',
+        'dispatched_at',
+        'closed_at',
+        'target',
     ];
+
+    const UPDATED_AT = null;
 
     public function project()
     {
