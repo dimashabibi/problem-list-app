@@ -183,11 +183,7 @@ class ProblemController extends Controller
             'curatives' => 'nullable|array',
             'curatives.*.curative' => 'nullable|string',
             'curatives.*.id_pic' => 'nullable|integer|exists:locations,id_location',
-<<<<<<< Updated upstream
-            'curatives.*.hour' => 'nullable',
-=======
             'curatives.*.hour' => 'nullable|string',
->>>>>>> Stashed changes
             'preventives' => 'nullable|array',
             'preventives.*.preventive' => 'nullable|string',
             'curative_actions' => 'nullable|array',
@@ -195,11 +191,7 @@ class ProblemController extends Controller
             'curative_pics' => 'nullable|array',
             'curative_pics.*' => 'nullable|integer|exists:locations,id_location',
             'curative_hours' => 'nullable|array',
-<<<<<<< Updated upstream
-            'curative_hours.*' => 'nullable',
-=======
             'curative_hours.*' => 'nullable|string',
->>>>>>> Stashed changes
             'preventive_actions' => 'nullable|array',
             'preventive_actions.*' => 'string|nullable',
             'attachment' => 'nullable|array',
@@ -432,11 +424,7 @@ class ProblemController extends Controller
             'curatives' => 'nullable|array',
             'curatives.*.curative' => 'nullable|string',
             'curatives.*.id_pic' => 'nullable|integer|exists:locations,id_location',
-<<<<<<< Updated upstream
-            'curatives.*.hour' => 'nullable',
-=======
             'curatives.*.hour' => 'nullable|string',
->>>>>>> Stashed changes
             'preventives' => 'nullable|array',
             'preventives.*.preventive' => 'nullable|string',
             // Legacy flat arrays (supported for compatibility)
@@ -445,11 +433,7 @@ class ProblemController extends Controller
             'curative_pics' => 'nullable|array',
             'curative_pics.*' => 'nullable|integer|exists:locations,id_location',
             'curative_hours' => 'nullable|array',
-<<<<<<< Updated upstream
-            'curative_hours.*' => 'nullable',
-=======
             'curative_hours.*' => 'nullable|string',
->>>>>>> Stashed changes
             'preventive_actions' => 'nullable|array',
             'preventive_actions.*' => 'string|nullable',
         ];
