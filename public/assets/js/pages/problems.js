@@ -272,7 +272,14 @@
                 {
                     data: "created_at",
                     render: function (data) {
-                        return data ? new Date(data).toLocaleDateString() : "-";
+                        return data
+                            ? new Date(data).toLocaleDateString("en-GB", {
+                                  weekday: "short", // Hari (misalnya: Senin)
+                                  day: "numeric", // Tanggal (misalnya: 22)
+                                  month: "short", // Bulan (misalnya: Februari)
+                                  year: "numeric", // Tahun (misalnya: 2026)
+                              })
+                            : "-";
                     },
                 },
                 { data: "project", className: "text-uppercase" },
@@ -281,6 +288,57 @@
                 { data: "location" },
                 { data: "problem" },
                 { data: "status" },
+                {
+                    data: "target",
+                    render: function (data, type, row) {
+                        if (data && row.dispatched_at) {
+                            const targetDate = new Date(data);
+                            const dispatchedDate = new Date(row.dispatched_at);
+
+                            const timeDiff =
+                                (targetDate - dispatchedDate) /
+                                (1000 * 3600 * 24);
+
+                            const today = new Date();
+                            const isPastTarget = targetDate <= today;
+                            let badgeClass = "";
+                            let badgeText = new Date(data).toLocaleDateString(
+                                "en-GB",
+                                {
+                                    weekday: "short",
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                },
+                            );
+
+                            if (isPastTarget) {
+                                badgeClass = "badge badge-soft-danger me-1";
+                            } else if (timeDiff <= 3) {
+                                badgeClass = "badge badge-soft-warning me-1";
+                            } else {
+                                badgeClass = "badge badge-soft-primary me-1";
+                            }
+
+                            if (row.closed_at) {
+                                const closedDate = new Date(row.closed_at);
+                                const today = new Date();
+                                const isClosed = closedDate <= today;
+
+                                if (isClosed) {
+                                    badgeClass =
+                                        "badge badge-soft-secondary me-1";
+                                }
+                            }
+
+                            // Kembalikan HTML dengan badge sesuai kondisi
+                            return `<span class="${badgeClass}">${badgeText}</span>`;
+                        } else {
+                            // Jika tidak ada data, tampilkan tanda "-"
+                            return "<span class='badge badge-danger'>-</span>";
+                        }
+                    },
+                },
                 {
                     data: "id_problem",
                     orderable: false,
@@ -1525,6 +1583,19 @@
                 row.created_at
                     ? new Date(row.created_at).toLocaleDateString()
                     : "-",
+            );
+            $("#d_dispatched_at").val(
+                row.dispatched_at
+                    ? new Date(row.dispatched_at).toLocaleDateString()
+                    : "-",
+            );
+            $("#d_closed_at").val(
+                row.closed_at
+                    ? new Date(row.closed_at).toLocaleDateString()
+                    : "-",
+            );
+            $("#d_target").val(
+                row.target ? new Date(row.target).toLocaleDateString() : "-",
             );
             $("#d_problem").val(row.problem || "");
             $("#d_cause").val(row.cause || "");

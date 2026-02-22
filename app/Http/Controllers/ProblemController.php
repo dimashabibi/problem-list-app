@@ -53,6 +53,9 @@ class ProblemController extends Controller
             return [
                 'id_problem' => $p->id_problem,
                 'created_at' => $p->created_at,
+                'dispatched_at' => $p->dispatched_at,
+                'closed_at' => $p->closed_at,
+                'target' => $p->target,
                 'project' => $p->project?->project_name,
                 'id_project' => $p->id_project,
                 'id_kanban' => $p->id_kanban,
@@ -1196,6 +1199,9 @@ class ProblemController extends Controller
         $sheet->getStyle('AC61')->applyFromArray($blueHeaderStyle);
         $sheet->getStyle('AC61')->applyFromArray($boldTextStyle);
         $sheet->mergeCells('AC62:AJ66');
+        $sheet->setCellValue('AC62', $problem->classification_problem);
+        $sheet->getStyle('AC62')->applyFromArray($boldTextStyle);
+        $sheet->getStyle('AC62')->applyFromArray($centerStyle);
 
         $sheet->mergeCells('AL61:AN61');
         $sheet->setCellValue('AL61', 'Approved');

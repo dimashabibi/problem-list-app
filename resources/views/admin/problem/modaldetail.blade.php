@@ -47,7 +47,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label for="d_location" class="form-label">Location</label>
-                                        <select id="d_location" class="form-control" disabled>
+                                        <select id="d_location" class="form-control" disabled data-choices data-choices-search-true>
                                             <option value="">Select location</option>
                                             @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
                                                 <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
@@ -56,7 +56,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label for="d_machine" class="form-label">Machine</label>
-                                        <select id="d_machine" class="form-control" disabled>
+                                        <select id="d_machine" class="form-control" disabled data-choices data-choices-search-true>
                                             <option value="">Select machine</option>
                                             @foreach (\App\Models\Machine::orderBy('name_machine')->get() as $m)
                                                 <option value="{{ $m->id_machine }}">{{ $m->name_machine }}</option>
@@ -97,7 +97,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label for="d_type_saibo" class="form-label">Type Saibo</label>
-                                        <select id="d_type_saibo" class="form-control" disabled>
+                                        <select id="d_type_saibo" class="form-control" disabled data-choices data-choices-search-true>
                                             <option value="">Select type</option>
                                             <option value="baru">Baru</option>
                                             <option value="berulang">Berulang</option>
@@ -105,7 +105,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label for="d_classification" class="form-label">Classification</label>
-                                        <select id="d_classification" class="form-control" disabled>
+                                        <select id="d_classification" class="form-control" disabled data-choices data-choices-search-true>
                                             <option value="">Select classification</option>
                                             <option value="konst">Konst</option>
                                             <option value="komp">Komp</option>
@@ -115,7 +115,7 @@
                                     <div class="col-md-6">
                                         <label for="d_classification_problem" class="form-label">Classification
                                             Problem</label>
-                                        <select id="d_classification_problem" class="form-control" disabled>
+                                        <select id="d_classification_problem" class="form-control" disabled data-choices data-choices-search-true>
                                             <option value="">Select classification problem</option>
                                             <option value="DD  -Construction Making">DD -Construction Making</option>
                                             <option value="DD - Stock List">DD - Stock List</option>
@@ -206,7 +206,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label for="d_seksi_in_charge" class="form-label">Seksi In Charge</label>
-                                        <select id="d_seksi_in_charge" class="form-control" disabled>
+                                        <select id="d_seksi_in_charge" class="form-control" disabled data-choices data-choices-search-true>
                                             <option value="">Select seksi</option>
                                             @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
                                                 <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
@@ -216,7 +216,7 @@
 
                                     <div class="col-md-6">
                                         <label for="d_stage" class="form-label">Stage</label>
-                                        <select id="d_stage" class="form-control" disabled>
+                                        <select id="d_stage" class="form-control" disabled data-choices data-choices-search-true>
                                             <option value="">Select stage</option>
                                             @foreach (['MFG', 'KS', 'KD', 'SK', 'T0', 'T1', 'T2', 'T3', 'BUYOFF', 'LT', 'HOMELINE'] as $st)
                                                 <option value="{{ $st }}">{{ $st }}</option>
@@ -229,9 +229,21 @@
                                         <label for="d_reporter" class="form-label">Reporter</label>
                                         <input type="text" id="d_reporter" class="form-control" disabled>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-3">
                                         <label for="d_created_at" class="form-label">Created At</label>
                                         <input type="text" id="d_created_at" class="form-control" disabled>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="d_dispatched_at" class="form-label">Dispatched At</label>
+                                        <input type="text" id="d_dispatched_at" class="form-control" disabled>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="d_closed_at" class="form-label">Closed At</label>
+                                        <input type="text" id="d_closed_at" class="form-control" disabled>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="d_target" class="form-label">Target</label>
+                                        <input type="text" id="d_target" class="form-control" disabled>
                                     </div>
 
                                     <!-- Row 5 (Textarea) -->

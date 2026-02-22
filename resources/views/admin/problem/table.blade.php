@@ -9,6 +9,7 @@
             <th>Location</th>
             <th>Problem</th>
             <th>Status</th>
+            <th>Target</th>
             <th>Actions</th>
         </tr>
     </thead>

@@ -67,7 +67,7 @@ class Problem extends Model
     {
         return $this->belongsTo(Machine::class, 'id_machine', 'id_machine');
     }
-
+    
     public function seksiInCharge()
     {
         return $this->belongsTo(Location::class, 'id_seksi_in_charge', 'id_location');

@@ -8,7 +8,7 @@
             <div class="modal-body">
                 <form id="problemForm" enctype="multipart/form-data">
                     <div class="row">
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Project</label>
                                 <div class="input-group">
@@ -65,7 +65,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Location</label>
-                                <select class="form-control" id="p_location">
+                                <select class="form-control" id="p_location" data-choices data-choices-search-true>
                                     <option value="">Select location</option>
                                     @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
                                         <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
@@ -76,7 +76,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Machine</label>
-                                <select class="form-control" id="p_machine">
+                                <select class="form-control" id="p_machine" data-choices data-choices-search-true>
                                     <option value="">Select machine</option>
                                     @foreach (\App\Models\Machine::orderBy('name_machine')->get() as $m)
                                         <option value="{{ $m->id_machine }}">{{ $m->name_machine }}</option>
@@ -87,7 +87,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Stage</label>
-                                <select class="form-control" id="p_stage">
+                                <select class="form-control" id="p_stage" data-choices data-choices-search-true>
                                     <option value="">Select stage</option>
                                     @foreach (['MFG', 'KS', 'KD', 'SK', 'T0', 'T1', 'T2', 'T3', 'BUYOFF', 'LT', 'HOMELINE'] as $s)
                                         <option value="{{ $s }}">{{ $s }}</option>
@@ -98,7 +98,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Type Saibo</label>
-                                <select class="form-control" id="p_type_saibo">
+                                <select class="form-control" id="p_type_saibo" data-choices data-choices-search-true>
                                     <option value="">Select type</option>
                                     <option value="baru">Baru</option>
                                     <option value="berulang">Berulang</option>
@@ -108,7 +108,8 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Classification</label>
-                                <select class="form-control" id="p_classification">
+                                <select class="form-control" id="p_classification" data-choices
+                                    data-choices-search-true>
                                     <option value="">Select classification</option>
                                     <option value="konst">Konst</option>
                                     <option value="komp">Komp</option>
@@ -119,7 +120,8 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Classification Problem</label>
-                                <select class="form-control" id="p_classification_problem">
+                                <select class="form-control" id="p_classification_problem" data-choices
+                                    data-choices-search-true>
                                     <option value="">Select classification problem</option>
                                     <option value="DD  -Construction Making">DD -Construction Making</option>
                                     <option value="DD - Stock List">DD - Stock List</option>
@@ -203,7 +205,8 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Seksi In Charge</label>
-                                <select class="form-control" id="p_seksi_in_charge">
+                                <select class="form-control" id="p_seksi_in_charge" data-choices
+                                    data-choices-search-true>
                                     <option value="">Select seksi</option>
                                     @foreach (\App\Models\Location::orderBy('location_name')->get() as $l)
                                         <option value="{{ $l->id_location }}">{{ $l->location_name }}</option>
