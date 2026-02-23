@@ -57,8 +57,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-danger me-auto" id="btnResetFilter">Reset Filter</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="btnApplyFilter">Apply Filter</button>
+                <button type="button" class="btn btn-primary" id="btnApplyFilter">Apply</button>
+                <button type="button" class="btn btn-success" id="btnApplyExport">Apply & Export</button>
             </div>
         </div>
     </div>

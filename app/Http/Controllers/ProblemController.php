@@ -409,6 +409,59 @@ class ProblemController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function exportProblem(Request $request)
+    {
+        $q = Problem::query()
+            ->with(['project', 'kanban', 'location', 'reporter', 'item', 'attachments', 'machine', 'seksiInCharge', 'curatives',  'preventives'])
+            ->orderBy('id_problem', 'desc');
+        if ($request->filled('item_id')) $q->where('id_item', $request->integer('item_id'));
+        if ($request->filled('project_id')) $q->where('id_project', $request->integer('project_id'));
+        if ($request->filled('curative_id')) $q->where('id_curative', $request->integer('curative_id'));
+        if ($request->filled('type')) $q->where('type', $request->string('type'));
+        if ($request->filled('group_code')) $q->where('group_code', $request->string('group_code'));
+        if ($request->filled('start_date')) $q->whereDate('created_at', '>=', $request->string('start_date'));
+        if ($request->filled('end_date')) $q->whereDate('created_at', '<=', $request->string('end_date'));
+
+        $problems = $q->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Set Header
+        $sheet->setCellValue('A1', 'ID');
+        $sheet->setCellValue('B1', 'Project');
+        $sheet->setCellValue('C1', 'Kanban');
+        $sheet->setCellValue('D1', 'Problem');
+        $sheet->setCellValue('E1', 'Curative');
+        $sheet->setCellValue('F1', 'Preventive');
+        $sheet->setCellValue('G1', 'Status');
+        $sheet->setCellValue('H1', 'Created At');
+
+        // Set Data
+        $row = 2;
+        foreach ($problems as $problem) {
+            $curatives = $problem->curatives->pluck('curative')->implode(', ');
+            $preventives = $problem->preventives->pluck('preventive')->implode(', ');
+
+            $sheet->setCellValue('A' . $row, $problem->id_problem);
+            $sheet->setCellValue('B' . $row, $problem->project->project_name);
+            $sheet->setCellValue('C' . $row, $problem->kanban->kanban_name);
+            $sheet->setCellValue('D' . $row, $problem->problem);
+            $sheet->setCellValue('E' . $row, $curatives);
+            $sheet->setCellValue('F' . $row, $preventives);
+            $sheet->setCellValue('G' . $row, $problem->status);
+            $sheet->setCellValue('H' . $row, $problem->created_at);
+            $row++;
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $fileName = 'problem_export.xlsx';
+        $temp_file = tempnam(sys_get_temp_dir(), $fileName);
+        $writer->save($temp_file);
+
+        return response()->download($temp_file, $fileName)->deleteFileAfterSend(true);
+    }
+
     public function update(Request $request, int $id)
     {
         $problem = Problem::findOrFail($id);

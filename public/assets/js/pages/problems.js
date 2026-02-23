@@ -482,6 +482,16 @@
             });
     }
 
+    function exportProblem() {
+    var activeType = $(".nav-tabs .nav-link.active").data("type") || "manufacturing";
+    var query = $.param({
+        type: activeType,
+        ...currentFilter,
+    });
+    var url = "/problem/export?" + query;
+    window.location.href = url;
+}
+
     function openProblemModal() {
         $("#problemForm")[0].reset();
         if (myDropzone) {
@@ -989,6 +999,24 @@
                 currentFilter.end_date = $("#flt_end_date").val();
 
                 initTable();
+
+                // Close modal
+                var modalEl = document.getElementById("filterModal");
+                var modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            });
+
+        $("#btnApplyExport")
+            .off("click")
+            .on("click", function () {
+                currentFilter.project_id = $("#flt_project").val();
+                currentFilter.kanban_id = $("#flt_kanban").val();
+                currentFilter.group_code = $("#flt_group_code").val();
+                currentFilter.start_date = $("#flt_start_date").val();
+                currentFilter.end_date = $("#flt_end_date").val();
+
+                initTable();
+                exportProblem();
 
                 // Close modal
                 var modalEl = document.getElementById("filterModal");

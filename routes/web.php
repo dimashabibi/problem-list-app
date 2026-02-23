@@ -100,6 +100,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/problems/export-group', [ProblemController::class, 'exportGroup'])->name('problems.export_group');
     Route::get('/problems/export-list', [ProblemController::class, 'exportList'])->name('problems.export_list');
     Route::get('/problems/{id}/export', [ProblemController::class, 'export'])->name('problems.export');
+    Route::get('/problem/export', [ProblemController::class, 'exportProblem'])->name('problem.export');
     Route::post('/update-status/{id}', [ProblemController::class, 'updateStatus']);
     Route::delete('/problems/{id}', [ProblemController::class, 'destroy'])->name('problems.destroy');
 
