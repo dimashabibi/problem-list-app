@@ -313,11 +313,14 @@
                             );
 
                             if (isPastTarget) {
-                                badgeClass = "badge badge-soft-danger me-1";
+                                badgeClass =
+                                    "badge badge-xl badge-soft-danger me-1";
                             } else if (timeDiff <= 3) {
-                                badgeClass = "badge badge-soft-warning me-1";
+                                badgeClass =
+                                    "badge badge-xl badge-soft-warning me-1";
                             } else {
-                                badgeClass = "badge badge-soft-primary me-1";
+                                badgeClass =
+                                    "badge badge-xl badge-soft-primary me-1";
                             }
 
                             if (row.closed_at) {
@@ -327,7 +330,7 @@
 
                                 if (isClosed) {
                                     badgeClass =
-                                        "badge badge-soft-secondary me-1";
+                                        "badge badge-xl badge-soft-secondary me-1";
                                 }
                             }
 
@@ -410,7 +413,15 @@
                     }
                     count++;
                     var dateStr = item.created_at
-                        ? new Date(item.created_at).toLocaleDateString()
+                        ? new Date(item.created_at).toLocaleDateString(
+                              "en-GB",
+                              {
+                                  weekday: "short",
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                              },
+                          )
                         : "-";
                     var col = $(
                         '<div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4"></div>',
