@@ -802,9 +802,9 @@ class ProblemController extends Controller
         $sheet->mergeCells('F1:Q1');
         $sheet->setCellValue('F1', 'Production Engineering & Tooling Div.');
         $sheet->mergeCells('F2:Q2');
-        $sheet->setCellValue('F2', 'Dies & Jig Planning Control & Adm. Dept.');
+        $sheet->setCellValue('F2', 'Tooling Engineering Dept.');
         $sheet->mergeCells('F3:Q3');
-        $sheet->setCellValue('F3', 'Dies Planning & Engineering Sec.');
+        $sheet->setCellValue('F3', 'Process & Facility Engineering Sec.');
 
         $sheet->mergeCells('R1:AJ3');
         $sheet->setCellValue('R1', 'Lembar Informasi Masalah Manufakturing');
@@ -1039,7 +1039,7 @@ class ProblemController extends Controller
         $sheet->getStyle('B30')->applyFromArray($centerStyle);
         $sheet->getStyle('B30')->applyFromArray($boldTextStyle);
 
-        for ($i = 1; $i < 12; $i++) {
+        for ($i = 1; $i < 7; $i++) {
             $row = $i + 32;
             $sheet->setCellValue("B{$row}", $i);
         }
@@ -1052,7 +1052,7 @@ class ProblemController extends Controller
 
         // Curative Data (Rows 34-44)
         $curatives = $problem->curatives;
-        for ($i = 0; $i < 11; $i++) {
+        for ($i = 0; $i < 6; $i++) {
             $row = 33 + $i;
             $sheet->mergeCells("C{$row}:P{$row}");
             if (isset($curatives[$i])) {
@@ -1067,7 +1067,7 @@ class ProblemController extends Controller
         $sheet->getStyle('Q30')->applyFromArray($boldTextStyle);
 
         // PIC Data (Rows 34-44)
-        for ($i = 0; $i < 11; $i++) {
+        for ($i = 0; $i < 6; $i++) {
             $row = 33 + $i;
             $sheet->mergeCells("Q{$row}:U{$row}");
             if (isset($curatives[$i]) && $curatives[$i]->pic) {
@@ -1107,9 +1107,9 @@ class ProblemController extends Controller
         $sheet->mergeCells('AJ32:AK32');
         $sheet->setCellValue('AJ32', 'Malam');
         $sheet->getStyle('AJ32')->applyFromArray($centerStyle);
-        $sheet->mergeCells('V43:AK43');
-        $sheet->setCellValue('V43', 'Total Cost & Cost Material');
-        $sheet->getStyle('V43')->applyFromArray($centerStyle);
+        $sheet->mergeCells('V38:AK38');
+        $sheet->setCellValue('V38', 'Total Cost & Cost Material');
+        $sheet->getStyle('V38')->applyFromArray($centerStyle);
 
 
         $sheet->mergeCells('AL30:AN32');
@@ -1117,7 +1117,7 @@ class ProblemController extends Controller
         $sheet->getStyle('AL30')->applyFromArray($centerStyle);
         $sheet->getStyle('AL30')->applyFromArray($boldTextStyle);
 
-        for ($i = 0; $i < 11; $i++) {
+        for ($i = 0; $i < 5; $i++) {
             $row = 33 + $i;
             $sheet->mergeCells("AL{$row}:AN{$row}");
             if (isset($curatives[$i]) && $curatives[$i]->pic) {
@@ -1126,13 +1126,13 @@ class ProblemController extends Controller
             }
         }
 
-        $sheet->mergeCells('AL43:AN43');
-        $sheet->setCellValue('AL43', '=SUM(AL33:AL42)');
+        $sheet->mergeCells('AL38:AN38');
+        $sheet->setCellValue('AL38', '=SUM(AL33:AL37)');
 
         $sheet->mergeCells('AO30:AS32');
 
 
-        for ($i = 0; $i < 11; $i++) {
+        for ($i = 0; $i < 5; $i++) {
             $row = 33 + $i;
             $sheet->mergeCells("AO{$row}:AS{$row}");
             if (isset($curatives[$i]) && $curatives[$i]->pic) {
@@ -1141,43 +1141,43 @@ class ProblemController extends Controller
             }
         }
 
-        $sheet->mergeCells('AO43:AS43');
-        $sheet->setCellValue('AO43', '=SUM(AO33:AO42)');
-        $sheet->getStyle('AO43')->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
+        $sheet->mergeCells('AO38:AS38');
+        $sheet->setCellValue('AO38', '=SUM(AO33:AO37)');
+        $sheet->getStyle('AO38')->getNumberFormat()->setFormatCode('[$Rp-IdID] #,##0');
         // End Kolom B
 
         // KOLOM C
-        $sheet->mergeCells('B45:W45');
-        $sheet->setCellValue('B45', 'Analisa Sebab Akibat');
-        $sheet->getStyle('B45')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('B45')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('B46:W65');
+        $sheet->mergeCells('B40:W40');
+        $sheet->setCellValue('B40', 'Analisa Sebab Akibat');
+        $sheet->getStyle('B40')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('B40')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('B41:W60');
 
-        $sheet->mergeCells('Y45:AS45');
-        $sheet->setCellValue('Y45', 'Perbaikan');
-        $sheet->getStyle('Y45')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('Y45')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('Y40:AS40');
+        $sheet->setCellValue('Y40', 'Perbaikan');
+        $sheet->getStyle('Y40')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('Y40')->applyFromArray($boldTextStyle);
 
-        $sheet->mergeCells('Y46:Z46');
-        $sheet->setCellValue('Y46', 'No');
-        $sheet->getStyle('Y46')->applyFromArray($centerStyle);
-        $sheet->getStyle('Y46')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('Y41:Z41');
+        $sheet->setCellValue('Y41', 'No');
+        $sheet->getStyle('Y41')->applyFromArray($centerStyle);
+        $sheet->getStyle('Y41')->applyFromArray($boldTextStyle);
 
         for ($i = 1; $i < 13; $i++) {
-            $row = $i + 46;
+            $row = $i + 41;
             $sheet->mergeCells("Y{$row}:Z{$row}");
             $sheet->setCellValue("Y{$row}", $i);
         }
 
         // penanggulangan
-        $sheet->mergeCells('AA46:AN46');
-        $sheet->setCellValue('AA46', 'Penanggulangan');
-        $sheet->getStyle('AA46')->applyFromArray($centerStyle);
-        $sheet->getStyle('AA46')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AA41:AN41');
+        $sheet->setCellValue('AA41', 'Penanggulangan');
+        $sheet->getStyle('AA41')->applyFromArray($centerStyle);
+        $sheet->getStyle('AA41')->applyFromArray($boldTextStyle);
         // Penanggulangan (Preventive) Data (Rows 47-58)
         $preventives = $problem->preventives;
         for ($i = 0; $i < 12; $i++) {
-            $row = 47 + $i;
+            $row = 42 + $i;
             $sheet->mergeCells("AA{$row}:AN{$row}");
             if (isset($preventives[$i])) {
                 $sheet->setCellValue("AA{$row}", $preventives[$i]->preventive);
@@ -1186,30 +1186,30 @@ class ProblemController extends Controller
 
 
         // tanggal
-        $sheet->mergeCells('AO46:AS46');
-        $sheet->setCellValue('AO46', 'Tanggal');
-        $sheet->getStyle('AO46')->applyFromArray($centerStyle);
-        $sheet->getStyle('AO46')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AO41:AS41');
+        $sheet->setCellValue('AO41', 'Tanggal');
+        $sheet->getStyle('AO41')->applyFromArray($centerStyle);
+        $sheet->getStyle('AO41')->applyFromArray($boldTextStyle);
         // End Kolom C
 
         for ($i = 0; $i < 12; $i++) {
-            $row = 47 + $i;
+            $row = 42 + $i;
             $sheet->mergeCells("AO{$row}:AS{$row}");
             if (isset($preventives[$i])) {
                 $sheet->setCellValue("AO{$row}", $preventives[$i]->created_at ? $preventives[$i]->created_at->format('d-M-Y') : '');
             }
         }
 
-        $sheet->mergeCells('Y60:AB60');
-        $sheet->setCellValue('Y60', 'Rank');
-        $sheet->getStyle('Y60')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('Y60')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('Y61:AB65');
-        $sheet->setCellValue('Y61', '=IF(AH43>1000000,"A",IF(AH43>=500000,"B",IF(AH43>=300000,"C","D")))');
-        $sheet->getStyle('Y61')->applyFromArray($rankStyle);
+        $sheet->mergeCells('Y55:AB55');
+        $sheet->setCellValue('Y55', 'Rank');
+        $sheet->getStyle('Y55')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('Y55')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('Y56:AB60');
+        $sheet->setCellValue('Y56', '=IF(AH38>1000000,"A",IF(AH38>=500000,"B",IF(AH38>=300000,"C","D")))');
+        $sheet->getStyle('Y56')->applyFromArray($rankStyle);
 
         // CONDITIONAL FORMATTING RANK
-        $rankRange = 'Y61:AB65';
+        $rankRange = 'Y56:AB60';
         $makeCond = function (string $val, string $rgb) {
             $cond = new Conditional();
             $cond->setConditionType(Conditional::CONDITION_CONTAINSTEXT);
@@ -1234,42 +1234,42 @@ class ProblemController extends Controller
         $sheet->getStyle($rankRange)->setConditionalStyles([$condA, $condB, $condC, $condD]);
 
 
-        $sheet->mergeCells('AC60:AG60');
-        $sheet->setCellValue('AC60', 'Klasifikasi');
-        $sheet->getStyle('AC60')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('AC60')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('AC61:AG65');
-        $sheet->setCellValue('AC61', $problem->classification_problem);
-        $sheet->getStyle('AC61')->applyFromArray($boldTextStyle);
-        $sheet->getStyle('AC61')->applyFromArray($centerStyle);
-        $sheet->getStyle('AC61')->getAlignment()->setWrapText(true);
+        $sheet->mergeCells('AC55:AG55');
+        $sheet->setCellValue('AC55', 'Klasifikasi');
+        $sheet->getStyle('AC55')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('AC55')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AC56:AG60');
+        $sheet->setCellValue('AC56', $problem->classification_problem);
+        $sheet->getStyle('AC56')->applyFromArray($boldTextStyle);
+        $sheet->getStyle('AC56')->applyFromArray($centerStyle);
+        $sheet->getStyle('AC56')->getAlignment()->setWrapText(true);
 
+        $sheet->mergeCells('AI55:AL55');
+        $sheet->setCellValue('AI55', 'Approved');
+        $sheet->getStyle('AI55')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('AI55')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AI56:AL59'); //FIELD
         $sheet->mergeCells('AI60:AL60');
-        $sheet->setCellValue('AI60', 'Approved');
-        $sheet->getStyle('AI60')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('AI60')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('AI61:AL64'); //FIELD
-        $sheet->mergeCells('AI65:AL65');
-        $sheet->setCellValue('AI65', 'DpH');
-        $sheet->getStyle('AI65')->applyFromArray($centerStyle);
+        $sheet->setCellValue('AI60', 'DpH');
+        $sheet->getStyle('AI60')->applyFromArray($centerStyle);
 
 
+        $sheet->mergeCells('AM55:AO55');
+        $sheet->setCellValue('AM55', 'Checked');
+        $sheet->getStyle('AM55')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('AM55')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AM56:AO59');
         $sheet->mergeCells('AM60:AO60');
-        $sheet->setCellValue('AM60', 'Checked');
-        $sheet->getStyle('AM60')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('AM60')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('AM61:AO64');
-        $sheet->mergeCells('AM65:AO65');
-        $sheet->setCellValue('AM65', 'SH');
-        $sheet->getStyle('AM65')->applyFromArray($centerStyle);
+        $sheet->setCellValue('AM60', 'SH');
+        $sheet->getStyle('AM60')->applyFromArray($centerStyle);
 
+        $sheet->mergeCells('AP55:AS55');
+        $sheet->setCellValue('AP55', 'Prepared');
+        $sheet->getStyle('AP55')->applyFromArray($blueHeaderStyle);
+        $sheet->getStyle('AP55')->applyFromArray($boldTextStyle);
+        $sheet->mergeCells('AP56:AS59');
         $sheet->mergeCells('AP60:AS60');
-        $sheet->setCellValue('AP60', 'Prepared');
-        $sheet->getStyle('AP60')->applyFromArray($blueHeaderStyle);
-        $sheet->getStyle('AP60')->applyFromArray($boldTextStyle);
-        $sheet->mergeCells('AP61:AS64');
-        $sheet->mergeCells('AP65:AS65');
-        $sheet->getStyle('AP65')->applyFromArray($centerStyle);
+        $sheet->getStyle('AP60')->applyFromArray($centerStyle);
 
         // Apply Borders
         $sheet->getStyle('AK1:AS3')->applyFromArray($borderStyle);
@@ -1278,14 +1278,14 @@ class ProblemController extends Controller
         $sheet->getStyle('B9:AJ27')->applyFromArray($borderStyle);
         $sheet->getStyle('AL9:AS27')->applyFromArray($borderStyle);
         // kolom B
-        $sheet->getStyle('B29:AS43')->applyFromArray($borderStyle);
+        $sheet->getStyle('B29:AS38')->applyFromArray($borderStyle);
 
         // kolom C  
         $sheet->getStyle('B45:W45')->applyFromArray($borderStyle);
-        $sheet->getStyle('B46:W65')->applyFromArray($borderStyle);
-        $sheet->getStyle('Y46:AS58')->applyFromArray($borderStyle);
-        $sheet->getStyle('Y60:AG65')->applyFromArray($borderStyle);
-        $sheet->getStyle('AI60:AS65')->applyFromArray($borderStyle);
+        $sheet->getStyle('B41:W60')->applyFromArray($borderStyle);
+        $sheet->getStyle('Y41:AS53')->applyFromArray($borderStyle);
+        $sheet->getStyle('Y55:AG60')->applyFromArray($borderStyle);
+        $sheet->getStyle('AI55:AS60')->applyFromArray($borderStyle);
 
 
         return $this->downloadSpreadsheet($spreadsheet, $fileName);
