@@ -11,6 +11,7 @@ use App\Http\Controllers\MachineController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\MicrosoftAuthController;
 
 use App\Http\Controllers\DashboardController;
 
@@ -102,6 +103,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/problems/{id}/export', [ProblemController::class, 'export'])->name('problems.export');
     Route::get('/problem/export', [ProblemController::class, 'exportProblem'])->name('problem.export');
     Route::post('/update-status/{id}', [ProblemController::class, 'updateStatus']);
+    Route::get('/get-problem-details/{id}', [ProblemController::class, 'getProblemDetails']);
+    Route::post('/send-dispatch-email', [ProblemController::class, 'sendDispatchEmail']);
     Route::delete('/problems/{id}', [ProblemController::class, 'destroy'])->name('problems.destroy');
 
     Route::get('/admin/machines', [MachineController::class, 'index'])->name('machines.index');
@@ -111,3 +114,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/machines/{id}', [MachineController::class, 'destroy'])->name('machines.destroy');
     Route::delete('/machines/bulk', [MachineController::class, 'bulkDestroy'])->name('machines.bulk.destroy');
 });
+
+Route::get('/login/microsoft', [MicrosoftAuthController::class, 'redirect']);
+Route::get('/login/microsoft/callback', [MicrosoftAuthController::class, 'callback']);
+Route::get('/callback', [MicrosoftAuthController::class, 'callback']);

@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DispatchEmail;
+use App\Services\MicrosoftGraphMailer;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -687,6 +690,85 @@ class ProblemController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function getProblemDetails($id)
+    {
+        $problem = Problem::findOrFail($id);
+        return response()->json([
+            'assigned_to_email' => $problem->assigned_to_email,
+        ]);
+    }
+
+    public function sendDispatchEmail(Request $request)
+    {
+        $validated = $request->validate([
+            'sendTo' => 'required|email',
+            'cc' => 'nullable|email',
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,png,docx|max:10240',
+            'problem_id' => 'required|integer|exists:problems,id_problem',
+        ]);
+
+        $problem = Problem::findOrFail($validated['problem_id']);
+        $problem->status = 'dispatched';
+        if (!$problem->dispatched_at) {
+            $now = now();
+            $problem->dispatched_at = $now;
+            if (!$problem->target) {
+                $problem->target = $now->copy()->addDays(5);
+            }
+        }
+        $problem->save();
+
+        $token = MicrosoftGraphMailer::ensureAccessToken();
+        if (!$token) {
+            return response()->json([
+                'success' => false,
+                'requires_auth' => true,
+                'login_url' => url('/login/microsoft'),
+                'message' => 'Microsoft OAuth required',
+            ], 401);
+        }
+
+        $attachments = null;
+        if ($request->file('attachment')) {
+            $f = $request->file('attachment');
+            $attachments = [[
+                'name' => $f->getClientOriginalName(),
+                'contentType' => $f->getMimeType(),
+                'bytes' => file_get_contents($f->getRealPath()),
+            ]];
+        }
+
+        $resp = MicrosoftGraphMailer::sendMail(
+            $token,
+            $validated['sendTo'],
+            $validated['cc'] ?? null,
+            $validated['subject'],
+            nl2br(e($validated['message'])),
+            $attachments
+        );
+
+        if ($resp->status() !== 202) {
+            $body = $resp->json();
+            $message = is_array($body) ? ($body['error']['message'] ?? 'Failed to send via Microsoft Graph') : 'Failed to send via Microsoft Graph';
+            Log::warning('graph_send_mail_failed', [
+                'status' => $resp->status(),
+                'body' => $body,
+                'to' => $validated['sendTo'],
+                'cc' => $validated['cc'] ?? null,
+            ]);
+            return response()->json(['success' => false, 'message' => $message], 500);
+        }
+
+        Log::info('graph_send_mail_success', [
+            'status' => $resp->status(),
+            'to' => $validated['sendTo'],
+            'cc' => $validated['cc'] ?? null,
+        ]);
+        return response()->json(['success' => true]);
+    }
+
 
 
     public function exportGroup(Request $request)
@@ -750,8 +832,13 @@ class ProblemController extends Controller
 
     private function exportFormatManufacturing($problems, $fileName)
     {
+        // Setup Spreadsheet and Styles
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
+        $sheet->getPageSetup()->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4);
+        $sheet->getPageSetup()->setFitToPage(true);
+        $sheet->getPageSetup()->setFitToWidth(1);
+        $sheet->getPageSetup()->setFitToHeight(1);
         $sheet->setTitle('Manufacturing List');
 
         $headerStyle = [
@@ -791,6 +878,7 @@ class ProblemController extends Controller
             ->setName('Calibri')
             ->setSize(11);
 
+        $sheet->getColumnDimension('A')->setWidth(1);
         $sheet->getDefaultColumnDimension()->setWidth(2.71);
         // --- Logo & Title Header ---
         // Assuming TMMIN logo is text for now or simple placeholder

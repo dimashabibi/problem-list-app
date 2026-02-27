@@ -26,6 +26,7 @@ class Problem extends Model
         'cause',
         'status',
         'id_user',
+        'assigned_to_email',
         'group_code',
         'group_code_norm',
         'classification',

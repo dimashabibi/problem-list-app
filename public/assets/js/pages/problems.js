@@ -1837,6 +1837,64 @@
                 });
         });
 
+        function openDispatchModal(problemId) {
+            ajax({
+                url: "/get-problem-details/" + problemId,
+                method: "GET",
+            }).done(function (response) {
+                $("#problem_id").val(problemId);
+                $("#sendTo").val(response.assigned_to_email || "");
+                var modal = new bootstrap.Modal(
+                    document.getElementById("dispatchModal"),
+                );
+                modal.show();
+            });
+        }
+
+        $("#dispatchForm")
+            .off("submit")
+            .on("submit", function (e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                $.ajax({
+                    url: "/send-dispatch-email",
+                    type: "POST",
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    headers: { "X-CSRF-TOKEN": csrf() },
+                    success: function () {
+                        var el = document.getElementById("dispatchModal");
+                        var modal = bootstrap.Modal.getInstance(el);
+                        if (modal) modal.hide();
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: "success",
+                                title: "Email Sent",
+                                timer: 1500,
+                                showConfirmButton: false,
+                            });
+                        }
+                        if (table) table.ajax.reload(null, false);
+                    },
+                    error: function (xhr) {
+                        var json = xhr.responseJSON || {};
+                        if (json.requires_auth && json.login_url) {
+                            window.location.href = json.login_url;
+                            return;
+                        }
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: "error",
+                                title: json.message || "Failed to send email",
+                            });
+                        } else {
+                            alert(json.message || "Failed to send email.");
+                        }
+                    },
+                });
+            });
+
         $(document).on("click", ".btn-update-status", function () {
             var problemId = $(this).data("id");
             var currentStatus = $(this).data("status");
@@ -1845,6 +1903,11 @@
             var statusLabel = currentStatus
                 .replace("_", " ")
                 .replace(/\b\w/g, (l) => l.toUpperCase());
+
+            if (currentStatus === "dispatched") {
+                openDispatchModal(problemId);
+                return;
+            }
 
             if (window.Swal) {
                 Swal.fire({
