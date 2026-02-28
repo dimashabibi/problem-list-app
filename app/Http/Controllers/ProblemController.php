@@ -705,7 +705,7 @@ class ProblemController extends Controller
             'cc' => 'nullable|email',
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
-            'attachment' => 'nullable|file|mimes:pdf,jpg,png,docx|max:10240',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,png,docx,xlsx,xls|max:10240',
             'problem_id' => 'required|integer|exists:problems,id_problem',
         ]);
 

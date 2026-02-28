@@ -159,7 +159,7 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="attachment" class="form-label">Attachment</label>
-                                        <input type="file" class="form-control" id="attachment" name="attachment">
+                                        <input type="file" class="form-control" id="attachment" name="attachment" accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
                                     </div>
                                     <input type="hidden" name="problem_id" id="problem_id">
                                     <button type="submit" class="btn btn-primary">Send Email</button>

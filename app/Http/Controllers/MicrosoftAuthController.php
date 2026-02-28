@@ -12,15 +12,21 @@ class MicrosoftAuthController extends Controller
 {
     public function redirect()
     {
-        return Socialite::buildProvider(MicrosoftProvider::class, config('services.microsoft'))
+        $cfg = config('services.microsoft');
+        $cfg['tenant'] = env('MICROSOFT_TENANT_ID'); // paksa dari env
+
+        return Socialite::buildProvider(MicrosoftProvider::class, $cfg)
             ->scopes(['openid', 'profile', 'email', 'offline_access', 'Mail.Send', 'Mail.Read'])
             ->redirect();
     }
 
     public function callback(Request $request)
     {
+        $cfg = config('services.microsoft');
+        $cfg['tenant'] = env('MICROSOFT_TENANT_ID');
+        
         try {
-            $user = Socialite::driver('microsoft')->user();
+            $user = Socialite::buildProvider(MicrosoftProvider::class, $cfg)->user();
             $token = $user->token;
             $refreshToken = $user->refreshToken ?? null;
             $expiresIn = $user->expiresIn ?? 3600;
