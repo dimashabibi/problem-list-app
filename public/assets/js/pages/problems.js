@@ -148,12 +148,6 @@
         $sel.prop("disabled", true);
         $.getJSON(url)
             .done(function (data) {
-                console.log("problem-codes params", {
-                    type: type,
-                    id_project: projectId,
-                    id_kanban: kanbanId,
-                });
-                console.log("problem-codes response", data);
                 $sel.empty();
                 $sel.append('<option value="">Select existing code</option>');
                 (data || []).forEach(function (row) {
