@@ -22,8 +22,12 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Kanbans</h5>
                         <div class="d-flex align-items-center gap-2">
-                            <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
-                            <button id="btnKanbanAdd" class="btn btn-primary">Add Kanban</button>
+                            @can('admin')
+                                <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
+                            @endcan
+                            @can('admin')
+                                <button id="btnKanbanAdd" class="btn btn-primary">Add Kanban</button>
+                            @endcan
                         </div>
                     </div>
                     <div class="card-body">
@@ -31,7 +35,9 @@
                     </div>
                 </div>
 
-                @include('admin.kanban.modaladd', ['projects' => $projects])
+                @can('admin')
+                    @include('admin.kanban.modaladd', ['projects' => $projects])
+                @endcan
             </div>
 
             @include('layouts.footer')
@@ -42,7 +48,7 @@
     <script src="{{ asset('assets/js/pages/kanbans.js') }}"></script>
     <script>
         $(function() {
-            $('#kanbanTableContainer').load('/admin/kanbans/table', function() {
+            $('#kanbanTableContainer').load('/kanbans/table', function() {
                 if (window.loadKanbans) window.loadKanbans();
             });
         });

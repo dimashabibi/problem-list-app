@@ -6,3 +6,6 @@
 <script src="{{ asset('assets/vendor/datatables/js/dataTables.bootstrap5.min.js') }}"></script>
 <script src="{{ asset('assets/vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 <script src="{{ asset('assets/vendor/lucide/umd/lucide.min.js') }}"></script>
+<script>
+    window.__canAdmin = @json(auth()->check() && auth()->user()->can('admin'));
+</script>

@@ -9,7 +9,12 @@ class ProjectController extends Controller
 {
     public function index()
     {
-        return view('projects.index');
+        return view('admin.project.index');
+    }
+
+    public function table()
+    {
+        return view('admin.project.table');
     }
 
     public function list(Request $request)

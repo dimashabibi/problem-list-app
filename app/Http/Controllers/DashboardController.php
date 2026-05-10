@@ -7,18 +7,46 @@ use App\Models\Problem;
 use App\Models\Project;
 use App\Models\Location;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
+        $startDateInput = $request->input('start_date');
+        $endDateInput = $request->input('end_date');
+        $periodInput = $request->input('period');
+
+        $startAt = null;
+        $endAt = null;
+        $period = null;
+
+        if ($startDateInput && $endDateInput) {
+            $startAt = Carbon::parse($startDateInput)->startOfDay();
+            $endAt = Carbon::parse($endDateInput)->endOfDay();
+        } elseif (in_array($periodInput, ['weekly', 'monthly', 'yearly'], true)) {
+            $now = Carbon::now();
+            $period = $periodInput;
+
+            if ($period === 'weekly') {
+                $startAt = $now->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+                $endAt = $now->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+            } elseif ($period === 'monthly') {
+                $startAt = $now->copy()->startOfMonth()->startOfDay();
+                $endAt = $now->copy()->endOfMonth()->endOfDay();
+            } elseif ($period === 'yearly') {
+                $startAt = $now->copy()->startOfYear()->startOfDay();
+                $endAt = $now->copy()->endOfYear()->endOfDay();
+            }
+        }
+
+        $startDate = $startAt ? $startAt->toDateString() : null;
+        $endDate = $endAt ? $endAt->toDateString() : null;
 
         $query = Problem::query();
 
-        if ($startDate && $endDate) {
-            $query->whereBetween('created_at', [$startDate, $endDate]);
+        if ($startAt && $endAt) {
+            $query->whereBetween('created_at', [$startAt, $endAt]);
         }
 
         $dataTotal = [
@@ -32,30 +60,30 @@ class DashboardController extends Controller
 
         $thisWeekProblems = [
 
-            'pie'     => Problem::when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
-                return $q->whereBetween('created_at', [$startDate, $endDate]);
+            'pie'     => Problem::when($startAt && $endAt, function ($q) use ($startAt, $endAt) {
+                return $q->whereBetween('created_at', [$startAt, $endAt]);
             })->where('problems.type', 'manufacturing')->count(),
             'column1' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
-                ->when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
-                    return $q->whereBetween('created_at', [$startDate, $endDate]);
+                ->when($startAt && $endAt, function ($q) use ($startAt, $endAt) {
+                    return $q->whereBetween('created_at', [$startAt, $endAt]);
                 })
                 ->where('type', 'manufacturing')
                 ->first()->closed,
             'sk' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
-                ->when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
-                    return $q->whereBetween('created_at', [$startDate, $endDate]);
+                ->when($startAt && $endAt, function ($q) use ($startAt, $endAt) {
+                    return $q->whereBetween('created_at', [$startAt, $endAt]);
                 })
                 ->where('type', 'sk')
                 ->first()->closed,
             'ks' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
-                ->when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
-                    return $q->whereBetween('created_at', [$startDate, $endDate]);
+                ->when($startAt && $endAt, function ($q) use ($startAt, $endAt) {
+                    return $q->whereBetween('created_at', [$startAt, $endAt]);
                 })
                 ->where('type', 'ks')
                 ->first()->closed,
             'kd' => Problem::select(DB::raw('count(case when status != "closed" then 1 else null end) as closed'))
-                ->when($startDate && $endDate, function ($q) use ($startDate, $endDate) {
-                    return $q->whereBetween('created_at', [$startDate, $endDate]);
+                ->when($startAt && $endAt, function ($q) use ($startAt, $endAt) {
+                    return $q->whereBetween('created_at', [$startAt, $endAt]);
                 })
                 ->where('type', 'kd')
                 ->first()->closed,
@@ -66,8 +94,8 @@ class DashboardController extends Controller
             ->join('projects', 'problems.id_project', '=', 'projects.id_project')
             ->where('problems.type', 'manufacturing');
 
-        if ($startDate && $endDate) {
-            $pieQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        if ($startAt && $endAt) {
+            $pieQuery->whereBetween('problems.created_at', [$startAt, $endAt]);
         }
 
         $pieData = $pieQuery->groupBy('problems.id_project', 'projects.project_name')
@@ -83,8 +111,8 @@ class DashboardController extends Controller
             ->join('locations', 'problems.id_location', '=', 'locations.id_location')
             ->where('problems.type', 'manufacturing');
 
-        if ($startDate && $endDate) {
-            $chartDataQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        if ($startAt && $endAt) {
+            $chartDataQuery->whereBetween('problems.created_at', [$startAt, $endAt]);
         }
 
         $chartData = $chartDataQuery->groupBy('problems.id_location', 'locations.location_name')
@@ -106,8 +134,8 @@ class DashboardController extends Controller
             ->join('projects', 'problems.id_project', '=', 'projects.id_project')
             ->where('problems.type', 'sk');
 
-        if ($startDate && $endDate) {
-            $skDataQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        if ($startAt && $endAt) {
+            $skDataQuery->whereBetween('problems.created_at', [$startAt, $endAt]);
         }
 
         $chartData = $skDataQuery->groupBy('problems.id_project', 'projects.project_name')
@@ -129,8 +157,8 @@ class DashboardController extends Controller
             ->join('projects', 'problems.id_project', '=', 'projects.id_project')
             ->where('problems.type', 'ks');
 
-        if ($startDate && $endDate) {
-            $ksDataQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        if ($startAt && $endAt) {
+            $ksDataQuery->whereBetween('problems.created_at', [$startAt, $endAt]);
         }
 
         $chartData = $ksDataQuery->groupBy('problems.id_project', 'projects.project_name')
@@ -151,8 +179,8 @@ class DashboardController extends Controller
             ->join('projects', 'problems.id_project', '=', 'projects.id_project')
             ->where('problems.type', 'sk');
 
-        if ($startDate && $endDate) {
-            $skDataQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        if ($startAt && $endAt) {
+            $skDataQuery->whereBetween('problems.created_at', [$startAt, $endAt]);
         }
 
         $chartData = $skDataQuery->groupBy('problems.id_project', 'projects.project_name')
@@ -174,8 +202,8 @@ class DashboardController extends Controller
             ->join('projects', 'problems.id_project', '=', 'projects.id_project')
             ->where('problems.type', 'kd');
 
-        if ($startDate && $endDate) {
-            $kdDataQuery->whereBetween('problems.created_at', [$startDate, $endDate]);
+        if ($startAt && $endAt) {
+            $kdDataQuery->whereBetween('problems.created_at', [$startAt, $endAt]);
         }
 
         $chartData = $kdDataQuery->groupBy('problems.id_project', 'projects.project_name')
@@ -191,6 +219,6 @@ class DashboardController extends Controller
 
 
 
-        return view('admin.index', compact('pieData', 'columnChart1', 'columnChartSk', 'columnChartKd', 'columnChartKs', 'dataTotal', 'thisWeekProblems', 'startDate', 'endDate'));
+        return view('admin.index', compact('pieData', 'columnChart1', 'columnChartSk', 'columnChartKd', 'columnChartKs', 'dataTotal', 'thisWeekProblems', 'startDate', 'endDate', 'period'));
     }
 }

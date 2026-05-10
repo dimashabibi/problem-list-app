@@ -32,32 +32,6 @@
                         </span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end">
-
-                        <a class="dropdown-item" href="pages-profile.html">
-                            <i data-lucide="circle-user" class="fs-16 text-muted align-middle me-2"></i><span
-                                class="align-middle">My Account</span>
-                        </a>
-
-                        <a class="dropdown-item" href="pages-pricing.html">
-                            <i data-lucide="badge-percent" class="fs-16 text-muted align-middle me-2"></i><span
-                                class="align-middle">Pricing</span>
-                        </a>
-                        <a class="dropdown-item" href="pages-faqs.html">
-                            <i data-lucide="circle-help" class="fs-16 text-muted align-middle me-2"></i><span
-                                class="align-middle">Help</span>
-                        </a>
-                        <a class="dropdown-item" href="pages-gallery.html">
-                            <i data-lucide="book-image" class="fs-16 text-muted align-middle me-2"></i>
-                            <span class="align-middle">Photos</span>
-                            <span class="align-middle float-end badge badge-soft-danger">New</span>
-                        </a>
-
-                        <div class="dropdown-divider my-1"></div>
-
-                        <a class="dropdown-item" href="auth-lock-screen.html">
-                            <i data-lucide="lock" class="fs-16 text-muted align-middle me-2"></i><span
-                                class="align-middle">Lock screen</span>
-                        </a>
                         <form action="{{ route('logout') }}" method="POST" class="dropdown-item p-0">
                             @csrf
                             <button type="submit" class="btn w-100 text-start">

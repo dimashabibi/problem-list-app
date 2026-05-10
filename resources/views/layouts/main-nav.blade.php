@@ -2,12 +2,12 @@
     <div class="d-flex justify-content-between main-logo-box">
         <!-- Sidebar Logo -->
         <div class="logo-box">
-            <a href="{{ url('/admin/dashboard') }}" class="logo-dark">
+            <a href="{{ url('/dashboard') }}" class="logo-dark">
                 <img src="{{ asset('assets/images/logo-sm.png') }}" class="logo-sm" alt="logo sm">
                 <img src="{{ asset('assets/images/logo-dark.png') }}" class="logo-lg" alt="logo dark">
             </a>
 
-            <a href="{{ url('/admin/dashboard') }}" class="logo-light">
+            <a href="{{ url('/dashboard') }}" class="logo-light">
                 <img src="{{ asset('assets/images/logo-sm.png') }}" class="logo-sm" alt="logo sm">
                 <img src="{{ asset('assets/images/logo-white.png') }}" class="logo-lg" alt="logo light">
             </a>
@@ -19,7 +19,7 @@
         <ul class="navbar-nav" id="navbar-nav">
 
             <li class="menu-item">
-                <a class="menu-link" href="{{ url('/admin/dashboard') }}">
+                <a class="menu-link" href="{{ url('/dashboard') }}">
                     <span class="nav-icon">
                         <i data-lucide="house"></i>
                     </span>
@@ -30,7 +30,7 @@
             <li class="menu-title">Problem Management</li>
 
             <li class="menu-item">
-                <a class="menu-link" href="{{ url('/admin/problems') }}">
+                <a class="menu-link" href="{{ url('/problems') }}">
                     <span class="nav-icon">
                         <i data-lucide="triangle-alert"></i>
                     </span>
@@ -41,7 +41,7 @@
             <li class="menu-title">Project Management</li>
 
             <li class="menu-item">
-                <a class="menu-link" href="{{ url('/admin/projects') }}">
+                <a class="menu-link" href="{{ url('/projects') }}">
                     <span class="nav-icon">
                         <i data-lucide="origami"></i>
                     </span>
@@ -50,7 +50,7 @@
             </li>
 
             <li class="menu-item">
-                <a class="menu-link" href="{{ url('/admin/items') }}">
+                <a class="menu-link" href="{{ url('/items') }}">
                     <span class="nav-icon">
                         <i data-lucide="package"></i>
                     </span>
@@ -59,7 +59,7 @@
             </li>
 
             <li class="menu-item">
-                <a class="menu-link" href="/admin/kanbans">
+                <a class="menu-link" href="{{ url('/kanbans') }}">
                     <span class="nav-icon">
                         <i data-lucide="clipboard-check"></i>
                     </span>
@@ -68,7 +68,7 @@
             </li>
 
             <li class="menu-item">
-                <a class="menu-link" href="{{ url('/admin/locations') }}">
+                <a class="menu-link" href="{{ url('/locations') }}">
                     <span class="nav-icon">
                         <i data-lucide="map-pinned"></i>
                     </span>
@@ -77,7 +77,7 @@
             </li>
 
             <li class="menu-item">
-                <a class="menu-link" href="{{ url('/admin/machines') }}">
+                <a class="menu-link" href="{{ url('/machines') }}">
                     <span class="nav-icon">
                         <i data-lucide="cpu"></i>
                     </span>
@@ -85,16 +85,18 @@
                 </a>
             </li>
 
-            <li class="menu-title">User Management</li>
+            @if (auth()->check() && auth()->user()->status === 'admin')
+                <li class="menu-title">User Management</li>
 
-            <li class="menu-item">
-                <a class="menu-link" href="{{ url('/admin/users') }}">
-                    <span class="nav-icon">
-                        <i data-lucide="square-user-round"></i>
-                    </span>
-                    <span class="nav-text"> User List </span>
-                </a>
-            </li>
+                <li class="menu-item">
+                    <a class="menu-link" href="{{ url('/users') }}">
+                        <span class="nav-icon">
+                            <i data-lucide="square-user-round"></i>
+                        </span>
+                        <span class="nav-text"> User List </span>
+                    </a>
+                </li>
+            @endif
 
         </ul>
     </div>

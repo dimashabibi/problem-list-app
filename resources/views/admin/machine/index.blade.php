@@ -22,8 +22,12 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Machines</h5>
                         <div>
-                            <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
-                            <button id="btnAdd" class="btn btn-primary">Add Machine</button>
+                            @can('admin')
+                                <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
+                            @endcan
+                            @can('admin')
+                                <button id="btnAdd" class="btn btn-primary">Add Machine</button>
+                            @endcan
                         </div>
                     </div>
                     <div class="card-body">
@@ -33,7 +37,9 @@
                     </div>
                 </div>
 
-                @include('admin.machine.modaladd')
+                @can('admin')
+                    @include('admin.machine.modaladd')
+                @endcan
             </div>
 
             @include('layouts.footer')

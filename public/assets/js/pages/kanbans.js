@@ -1,5 +1,17 @@
 
 ;(function(){
+  var canAdmin = !!window.__canAdmin;
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   function csrf() {
     var meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
@@ -34,45 +46,54 @@
         return;
     }
 
+    var columns = [];
+    if (canAdmin) {
+      columns.push({
+        data: 'id_kanban',
+        orderable: false,
+        render: function(data, type, row) {
+          return `<input type="checkbox" class="form-check-input kanban-checkbox" value="${data}">`;
+        }
+      });
+    }
+
+    columns.push(
+      { 
+        data: null, 
+        render: function (data, type, row, meta) {
+          return meta.row + 1;
+        }
+      },
+      { 
+        data: 'project',
+        render: function(data) {
+          return data ? escapeHtml(data.project_name) : '-';
+        }
+      },
+      { data: 'kanban_name', render: function(data){ return escapeHtml(data); } },
+      { data: 'part_name', render: function(data){ return escapeHtml(data); } },
+      { data: 'part_number' }
+    );
+
+    if (canAdmin) {
+      columns.push({
+        data: 'id_kanban',
+        orderable: false,
+        render: function(data, type, row) {
+          const pname = row.project ? escapeHtml(row.project.project_name) : '';
+          const kname = escapeHtml(row.kanban_name || '');
+          return `<button class="btn btn-sm btn-outline-primary me-2 btn-k-edit" data-id="${data}" data-pname="${pname}" data-kname="${kname}">Edit</button>` +
+                 `<button class="btn btn-sm btn-outline-danger btn-k-delete" data-id="${data}">Delete</button>`;
+        }
+      });
+    }
+
     table = $('#table-kanban').DataTable({
         ajax: {
             url: url,
             dataSrc: ''
         },
-        columns: [
-            {
-                data: 'id_kanban',
-                orderable: false,
-                render: function(data, type, row) {
-                    return `<input type="checkbox" class="form-check-input kanban-checkbox" value="${data}">`;
-                }
-            },
-            { 
-                data: null, 
-                render: function (data, type, row, meta) {
-                    return meta.row + 1;
-                }
-            },
-            { 
-                data: 'project',
-                render: function(data) {
-                    return data ? data.project_name : '-';
-                }
-            },
-            { data: 'kanban_name' },
-            { data: 'part_name' },
-            { data: 'part_number' },
-            { 
-                data: 'id_kanban',
-                orderable: false,
-                render: function(data, type, row) {
-                    const pname = row.project ? row.project.project_name.replace(/"/g, '&quot;') : '';
-                    const kname = (row.kanban_name || '').replace(/"/g, '&quot;');
-                    return `<button class="btn btn-sm btn-outline-primary me-2 btn-k-edit" data-id="${data}" data-pname="${pname}" data-kname="${kname}">Edit</button>` +
-                           `<button class="btn btn-sm btn-outline-danger btn-k-delete" data-id="${data}">Delete</button>`;
-                }
-            }
-        ],
+        columns: columns,
         responsive: true
     });
   }

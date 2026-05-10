@@ -1,4 +1,16 @@
 (function () {
+    var canAdmin = !!window.__canAdmin;
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return "";
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     function csrf() {
         var meta = document.querySelector('meta[name="csrf-token"]');
         return meta ? meta.getAttribute("content") : "";
@@ -40,6 +52,49 @@
             return;
         }
 
+        var columns = [];
+        if (canAdmin) {
+            columns.push({
+                data: "id_item",
+                orderable: false,
+                className: "text-center",
+                render: function (data) {
+                    return `<input type="checkbox" class="form-check-input item-checkbox" value="${data}">`;
+                },
+            });
+        }
+
+        columns.push(
+            {
+                data: null,
+                render: function (data, type, row, meta) {
+                    return meta.row + 1;
+                },
+            },
+            {
+                data: "item_name",
+                className: "text-uppercase",
+                render: function (data) {
+                    return escapeHtml(data);
+                },
+            }
+        );
+
+        if (canAdmin) {
+            columns.push({
+                data: "id_item",
+                orderable: false,
+                render: function (data, type, row) {
+                    const name = escapeHtml(row.item_name || "");
+                    const desc = escapeHtml(row.description || "");
+                    return (
+                        `<button class="btn btn-sm btn-outline-primary me-2 btn-edit" data-id="${data}" data-name="${name}" data-desc="${desc}">Edit</button>` +
+                        `<button class="btn btn-sm btn-outline-danger btn-delete" data-id="${data}">Delete</button>`
+                    );
+                },
+            });
+        }
+
         table = $("#table-item").DataTable({
             ajax: {
                 url: "/items/list",
@@ -48,46 +103,13 @@
                     return json;
                 },
             },
-            columns: [
-                {
-                    data: "id_item",
-                    orderable: false,
-                    className: "text-center",
-                    render: function (data) {
-                        return `<input type="checkbox" class="form-check-input item-checkbox" value="${data}">`;
-                    },
-                },
-                {
-                    data: null,
-                    render: function (data, type, row, meta) {
-                        return meta.row + 1;
-                    },
-                },
-                { data: "item_name", className: "text-uppercase" },
-                {
-                    data: "id_item",
-                    orderable: false,
-                    render: function (data, type, row) {
-                        // Escape data for attributes
-                        const name = (row.item_name || "").replace(
-                            /"/g,
-                            "&quot;"
-                        );
-                        const desc = (row.description || "").replace(
-                            /"/g,
-                            "&quot;"
-                        );
-                        return (
-                            `<button class="btn btn-sm btn-outline-primary me-2 btn-edit" data-id="${data}" data-name="${name}" data-desc="${desc}">Edit</button>` +
-                            `<button class="btn btn-sm btn-outline-danger btn-delete" data-id="${data}">Delete</button>`
-                        );
-                    },
-                },
-            ],
+            columns: columns,
             responsive: true,
             drawCallback: function () {
-                $("#selectAll").prop("checked", false);
-                toggleBulkDeleteBtn();
+                if (canAdmin) {
+                    $("#selectAll").prop("checked", false);
+                    toggleBulkDeleteBtn();
+                }
             },
         });
     }

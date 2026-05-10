@@ -1,5 +1,17 @@
 
 ;(function(){
+  var canAdmin = !!window.__canAdmin;
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   function csrf() {
     var meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
@@ -29,38 +41,47 @@
         return;
     }
 
+    var columns = [];
+    if (canAdmin) {
+      columns.push({ 
+        data: 'id_location',
+        orderable: false,
+        render: function(data, type, row) {
+          return `<input type="checkbox" class="form-check-input location-checkbox" value="${data}">`;
+        }
+      });
+    }
+
+    columns.push(
+      { 
+        data: null, 
+        render: function (data, type, row, meta) {
+          return meta.row + 1;
+        }
+      },
+      { data: 'location_name', render: function(data){ return escapeHtml(data); } },
+      { data: 'description', render: function(data){ return escapeHtml(data); } }
+    );
+
+    if (canAdmin) {
+      columns.push({ 
+        data: 'id_location',
+        orderable: false,
+        render: function(data, type, row) {
+          const name = escapeHtml(row.location_name || '');
+          const desc = escapeHtml(row.description || '');
+          return `<button class="btn btn-sm btn-outline-primary me-2 btn-l-edit" data-id="${data}" data-name="${name}" data-desc="${desc}">Edit</button>` +
+                 `<button class="btn btn-sm btn-outline-danger btn-l-delete" data-id="${data}">Delete</button>`;
+        }
+      });
+    }
+
     table = $('#table-location').DataTable({
         ajax: {
             url: '/locations/list',
             dataSrc: ''
         },
-        columns: [
-            { 
-                data: 'id_location',
-                orderable: false,
-                render: function(data, type, row) {
-                    return `<input type="checkbox" class="form-check-input location-checkbox" value="${data}">`;
-                }
-            },
-            { 
-                data: null, 
-                render: function (data, type, row, meta) {
-                    return meta.row + 1;
-                }
-            },
-            { data: 'location_name' },
-            { data: 'description' },
-            { 
-                data: 'id_location',
-                orderable: false,
-                render: function(data, type, row) {
-                    const name = (row.location_name || '').replace(/"/g, '&quot;');
-                    const desc = (row.description || '').replace(/"/g, '&quot;');
-                    return `<button class="btn btn-sm btn-outline-primary me-2 btn-l-edit" data-id="${data}" data-name="${name}" data-desc="${desc}">Edit</button>` +
-                           `<button class="btn btn-sm btn-outline-danger btn-l-delete" data-id="${data}">Delete</button>`;
-                }
-            }
-        ],
+        columns: columns,
         responsive: true
     });
   }

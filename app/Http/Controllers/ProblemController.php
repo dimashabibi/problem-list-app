@@ -8,12 +8,11 @@ use App\Models\Item;
 use App\Models\Kanban;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\DispatchEmail;
-use App\Services\MicrosoftGraphMailer;
+use Illuminate\Validation\ValidationException;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -90,9 +89,15 @@ class ProblemController extends Controller
 
     public function problemCodes(Request $request)
     {
-        $type = $request->query('type');
-        $projectId = $request->query('id_project');
-        $kanbanId = $request->query('id_kanban');
+        $validated = $request->validate([
+            'type' => 'nullable|in:manufacturing,ks,kd,sk,kentokai,buyoff',
+            'id_project' => 'nullable|integer|exists:projects,id_project',
+            'id_kanban' => 'nullable|integer|exists:kanbans,id_kanban',
+        ]);
+
+        $type = $validated['type'] ?? null;
+        $projectId = $validated['id_project'] ?? null;
+        $kanbanId = $validated['id_kanban'] ?? null;
 
         $query = Problem::query()
             ->selectRaw('MAX(group_code) as code, group_code_norm as code_norm, COUNT(*) as total_problems, MAX(created_at) as last_used')
@@ -178,8 +183,238 @@ class ProblemController extends Controller
         return round((float) $str, 2);
     }
 
+    private function resolveProjectId(Request $request): int
+    {
+        $projectId = (int) $request->input('id_project');
+
+        if ($request->filled('new_project_name')) {
+            $projectName = preg_replace('/\s+/', ' ', trim(strip_tags((string) $request->input('new_project_name'))));
+            if ($projectName === '') {
+                throw ValidationException::withMessages(['new_project_name' => 'Invalid project name.']);
+            }
+            $project = Project::create([
+                'project_name' => $projectName,
+                'description' => 'Created via Problem',
+            ]);
+
+            $projectId = $project->id_project;
+        }
+
+        return $projectId;
+    }
+
+    private function resolveKanbanId(Request $request, int $projectId): int
+    {
+        $kanbanId = (int) $request->input('id_kanban');
+
+        if ($request->filled('new_kanban_name')) {
+            $kanbanName = preg_replace('/\s+/', ' ', trim(strip_tags((string) $request->input('new_kanban_name'))));
+            if ($kanbanName === '') {
+                throw ValidationException::withMessages(['new_kanban_name' => 'Invalid kanban name.']);
+            }
+            $kanban = Kanban::create([
+                'project_id' => $projectId,
+                'kanban_name' => $kanbanName,
+            ]);
+
+            $kanbanId = $kanban->id_kanban;
+        }
+
+        return $kanbanId;
+    }
+
+    private function resolveItemId(Request $request): int
+    {
+        $itemId = (int) $request->input('id_item');
+
+        if ($request->filled('new_item_name')) {
+            $itemName = preg_replace('/\s+/', ' ', trim(strip_tags((string) $request->input('new_item_name'))));
+            if ($itemName === '') {
+                throw ValidationException::withMessages(['new_item_name' => 'Invalid item name.']);
+            }
+            $item = Item::create([
+                'item_name' => $itemName,
+                'description' => 'Created via Problem',
+            ]);
+
+            $itemId = $item->id_item;
+        }
+
+        return $itemId;
+    }
+
+    private function storeUploadedAttachments(Request $request): array
+    {
+        $attachmentPaths = [];
+
+        if ($request->hasFile('attachment')) {
+            foreach ($request->file('attachment') as $file) {
+                $attachmentPaths[] = $file->store('attachments', 'public');
+            }
+        }
+
+        return $attachmentPaths;
+    }
+
+    private function resolveGroupCode(Request $request, int $projectId, int $kanbanId): array
+    {
+        $groupCode = null;
+        $groupCodeNorm = null;
+
+        $explicitGroupCode = trim((string) $request->input('group_code', ''));
+        if ($explicitGroupCode !== '') {
+            $groupCode = $explicitGroupCode;
+            $groupCodeNorm = strtoupper($groupCode);
+            return [$groupCode, $groupCodeNorm];
+        }
+
+        $mode = $request->input('group_code_mode');
+        if ($mode === 'existing') {
+            $code = trim((string) $request->input('group_code_existing', ''));
+            if ($code !== '') {
+                $groupCode = $code;
+                $groupCodeNorm = strtoupper($code);
+            }
+        } elseif ($mode === 'new') {
+            $type = (string) $request->input('type');
+            $suffix = trim((string) $request->input('group_code_suffix', ''));
+
+            if ($suffix !== '' && $type !== '') {
+                $project = Project::find($projectId);
+                $kanban = Kanban::find($kanbanId);
+
+                if ($project && $kanban) {
+                    $typeShort = $this->typeShort($type);
+                    $projectPart = $this->normalizeForCode($project->project_name ?? '');
+                    $kanbanPart = $this->normalizeForCode($kanban->kanban_name ?? '');
+                    $prefix = $typeShort . '_' . $projectPart . '_' . $kanbanPart . '_';
+
+                    $groupCode = trim($prefix . $suffix);
+                    $groupCodeNorm = strtoupper($groupCode);
+                }
+            }
+        }
+
+        return [$groupCode, $groupCodeNorm];
+    }
+
+    private function createCurativesFromRequest(Problem $problem, Request $request): void
+    {
+        $curativesNested = $request->input('curatives', []);
+        $curativeActions = $request->input('curative_actions', []);
+        $curativePics = $request->input('curative_pics', []);
+        $curativeHours = $request->input('curative_hours', []);
+
+        if (is_array($curativesNested) && count($curativesNested) > 0) {
+            foreach ($curativesNested as $c) {
+                $text = isset($c['curative']) ? trim((string) $c['curative']) : '';
+                if ($text === '') {
+                    continue;
+                }
+
+                $hourValue = isset($c['hour']) ? $this->parseHour($c['hour']) : null;
+
+                \App\Models\Curative::create([
+                    'id_problem' => $problem->id_problem,
+                    'curative' => $text,
+                    'id_pic' => !empty($c['id_pic']) ? $c['id_pic'] : null,
+                    'hour' => $hourValue,
+                ]);
+            }
+
+            return;
+        }
+
+        if (!is_array($curativeActions)) {
+            return;
+        }
+
+        foreach ($curativeActions as $index => $action) {
+            $text = trim((string) $action);
+            if ($text === '') {
+                continue;
+            }
+
+            $rawHour = $curativeHours[$index] ?? null;
+            $hourValue = $this->parseHour($rawHour);
+
+            \App\Models\Curative::create([
+                'id_problem' => $problem->id_problem,
+                'curative' => $text,
+                'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
+                'hour' => $hourValue,
+            ]);
+        }
+    }
+
+    private function createPreventivesFromRequest(Problem $problem, Request $request): void
+    {
+        $preventivesNested = $request->input('preventives', []);
+        $preventiveActions = $request->input('preventive_actions', []);
+
+        if (is_array($preventivesNested) && count($preventivesNested) > 0) {
+            foreach ($preventivesNested as $p) {
+                $text = isset($p['preventive']) ? trim((string) $p['preventive']) : '';
+                if ($text === '') {
+                    continue;
+                }
+
+                \App\Models\Preventive::create([
+                    'id_problem' => $problem->id_problem,
+                    'preventive' => $text,
+                ]);
+            }
+
+            return;
+        }
+
+        if (!is_array($preventiveActions)) {
+            return;
+        }
+
+        foreach ($preventiveActions as $action) {
+            $text = trim((string) $action);
+            if ($text === '') {
+                continue;
+            }
+
+            \App\Models\Preventive::create([
+                'id_problem' => $problem->id_problem,
+                'preventive' => $text,
+            ]);
+        }
+    }
+
+    private function createAttachmentRecords(Problem $problem, array $attachmentPaths): void
+    {
+        foreach ($attachmentPaths as $path) {
+            \App\Models\ProblemAttachment::create([
+                'problem_id' => $problem->id_problem,
+                'file_path' => $path,
+            ]);
+        }
+    }
+
     public function store(Request $request)
     {
+        $userId = Auth::id();
+        if (!$userId) {
+            abort(401);
+        }
+
+        $creatingMaster =
+            $request->filled('new_project_name') ||
+            $request->filled('new_kanban_name') ||
+            $request->filled('new_item_name');
+
+        if ($creatingMaster) {
+            $key = 'problem-master-create:' . $userId . '|' . $request->ip();
+            if (RateLimiter::tooManyAttempts($key, 10)) {
+                return response()->json(['message' => 'Too many create attempts. Please try again later.'], 429);
+            }
+            RateLimiter::hit($key, 60);
+        }
+
         $rules = [
             'id_location' => 'required|integer|exists:locations,id_location',
             'type' => 'required|in:manufacturing,ks,kd,sk,kentokai,buyoff',
@@ -201,7 +436,7 @@ class ProblemController extends Controller
             'preventive_actions' => 'nullable|array',
             'preventive_actions.*' => 'string|nullable',
             'attachment' => 'nullable|array',
-            'attachment.*' => 'image|max:4096',
+            'attachment.*' => 'image|max:2048',
             'id_machine' => 'nullable|integer|exists:machines,id_machine',
             'type_saibo' => 'nullable|in:baru,berulang',
             'classification' => 'nullable|in:konst,komp,model',
@@ -238,83 +473,11 @@ class ProblemController extends Controller
 
         $validated = $request->validate($rules);
 
-        $projectId = $request->input('id_project');
-        if ($request->filled('new_project_name')) {
-            $project = Project::create([
-                'project_name' => $request->input('new_project_name'),
-                'description' => 'Created via Problem'
-            ]);
-            $projectId = $project->id_project;
-        }
-
-        $kanbanId = $request->input('id_kanban');
-        if ($request->filled('new_kanban_name')) {
-            $kanban = Kanban::create([
-                'project_id' => $projectId,
-                'kanban_name' => $request->input('new_kanban_name')
-            ]);
-            $kanbanId = $kanban->id_kanban;
-        }
-
-        $itemId = $request->input('id_item');
-        if ($request->filled('new_item_name')) {
-            $item = \App\Models\Item::create([
-                'item_name' => $request->input('new_item_name'),
-                'description' => 'Created via Problem'
-            ]);
-            $itemId = $item->id_item;
-        }
-
-        $mainAttachmentPath = null;
-        $attachmentPaths = [];
-
-        if ($request->hasFile('attachment')) {
-            foreach ($request->file('attachment') as $file) {
-                $path = $file->store('attachments', 'public');
-                $attachmentPaths[] = $path;
-            }
-        }
-
-        $groupCode = null;
-        $groupCodeNorm = null;
-        $mode = $request->input('group_code_mode');
-        $explicitGroupCode = trim((string) $request->input('group_code', ''));
-        $type = $request->input('type');
-        $project = null;
-        $kanban = null;
-
-        if ($type && $projectId) {
-            $project = Project::find($projectId);
-        }
-        if ($type && $kanbanId) {
-            $kanban = Kanban::find($kanbanId);
-        }
-
-        if ($explicitGroupCode !== '') {
-            $groupCode = $explicitGroupCode;
-            $groupCodeNorm = strtoupper($groupCode);
-        } else {
-            if ($mode === 'existing') {
-                $code = trim((string) $request->input('group_code_existing', ''));
-                if ($code !== '') {
-                    $groupCode = $code;
-                    $groupCodeNorm = strtoupper($code);
-                }
-            } elseif ($mode === 'new') {
-                $suffix = trim((string) $request->input('group_code_suffix', ''));
-
-                if ($suffix !== '' && $project && $kanban) {
-                    $typeShort = $this->typeShort($type);
-                    $projectPart = $this->normalizeForCode($project->project_name ?? '');
-                    $kanbanPart = $this->normalizeForCode($kanban->kanban_name ?? '');
-
-                    $prefix = $typeShort . '_' . $projectPart . '_' . $kanbanPart . '_';
-
-                    $groupCode = trim($prefix . $suffix);
-                    $groupCodeNorm = strtoupper($groupCode);
-                }
-            }
-        }
+        $projectId = $this->resolveProjectId($request);
+        $kanbanId = $this->resolveKanbanId($request, $projectId);
+        $itemId = $this->resolveItemId($request);
+        $attachmentPaths = $this->storeUploadedAttachments($request);
+        [$groupCode, $groupCodeNorm] = $this->resolveGroupCode($request, $projectId, $kanbanId);
 
         $problemData = array_merge($validated, [
             'id_project' => $projectId,
@@ -322,11 +485,10 @@ class ProblemController extends Controller
             'id_item' => $itemId,
             'id_location' => $request->input('id_location'),
             'type' => $request->input('type'),
-            'status' => $request->input('status'),
             'problem' => $request->input('problem'),
             'cause' => $request->input('cause'),
             'status' => 'in_progress',
-            'id_user' => Auth::id() ?? 1,
+            'id_user' => $userId,
             'group_code' => $groupCode,
             'group_code_norm' => $groupCodeNorm,
             'id_seksi_in_charge' => $request->input('id_seksi_in_charge'),
@@ -335,78 +497,9 @@ class ProblemController extends Controller
 
         DB::transaction(function () use ($problemData, $attachmentPaths, $request) {
             $problem = Problem::create($problemData);
-
-            // Normalize curatives payload (support both formats)
-            $curativesNested = $request->input('curatives', []);
-            $curativeActions = $request->input('curative_actions', []);
-            $curativePics = $request->input('curative_pics', []);
-            $curativeHours = $request->input('curative_hours', []);
-
-            if (is_array($curativesNested) && count($curativesNested) > 0) {
-                foreach ($curativesNested as $c) {
-                    $text = isset($c['curative']) ? trim((string) $c['curative']) : '';
-                    if ($text === '') {
-                        continue;
-                    }
-
-                    $hourValue = isset($c['hour']) ? $this->parseHour($c['hour']) : null;
-
-                    \App\Models\Curative::create([
-                        'id_problem' => $problem->id_problem,
-                        'curative' => $text,
-                        'id_pic' => !empty($c['id_pic']) ? $c['id_pic'] : null,
-                        'hour' => $hourValue,
-                    ]);
-                }
-            } elseif (is_array($curativeActions)) {
-                foreach ($curativeActions as $index => $action) {
-                    $text = trim((string) $action);
-                    if ($text === '') {
-                        continue;
-                    }
-
-                    $rawHour = $curativeHours[$index] ?? null;
-                    $hourValue = $this->parseHour($rawHour);
-
-                    \App\Models\Curative::create([
-                        'id_problem' => $problem->id_problem,
-                        'curative' => $text,
-                        'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
-                        'hour' => $hourValue,
-                    ]);
-                }
-            }
-
-            // Normalize preventives payload (support both formats)
-            $preventivesNested = $request->input('preventives', []);
-            $preventiveActions = $request->input('preventive_actions', []);
-
-            if (is_array($preventivesNested) && count($preventivesNested) > 0) {
-                foreach ($preventivesNested as $p) {
-                    $text = isset($p['preventive']) ? trim((string) $p['preventive']) : '';
-                    if ($text === '') continue;
-                    \App\Models\Preventive::create([
-                        'id_problem' => $problem->id_problem,
-                        'preventive' => $text,
-                    ]);
-                }
-            } elseif (is_array($preventiveActions)) {
-                foreach ($preventiveActions as $action) {
-                    $text = trim((string) $action);
-                    if ($text === '') continue;
-                    \App\Models\Preventive::create([
-                        'id_problem' => $problem->id_problem,
-                        'preventive' => $text,
-                    ]);
-                }
-            }
-
-            foreach ($attachmentPaths as $path) {
-                \App\Models\ProblemAttachment::create([
-                    'problem_id' => $problem->id_problem,
-                    'file_path' => $path
-                ]);
-            }
+            $this->createCurativesFromRequest($problem, $request);
+            $this->createPreventivesFromRequest($problem, $request);
+            $this->createAttachmentRecords($problem, $attachmentPaths);
         });
 
         return response()->json(['success' => true]);
@@ -527,71 +620,8 @@ class ProblemController extends Controller
             // Reset curatives/preventives
             \App\Models\Curative::where('id_problem', $id)->delete();
             \App\Models\Preventive::where('id_problem', $id)->delete();
-
-            // Normalize curatives payload (support both formats)
-            $curativesNested = $request->input('curatives', []);
-            $curativeActions = $request->input('curative_actions', []);
-            $curativePics = $request->input('curative_pics', []);
-            $curativeHours = $request->input('curative_hours', []);
-
-            if (is_array($curativesNested) && count($curativesNested) > 0) {
-                foreach ($curativesNested as $c) {
-                    $text = isset($c['curative']) ? trim((string) $c['curative']) : '';
-                    if ($text === '') {
-                        continue;
-                    }
-
-                    $hourValue = isset($c['hour']) ? $this->parseHour($c['hour']) : null;
-
-                    \App\Models\Curative::create([
-                        'id_problem' => $problem->id_problem,
-                        'curative' => $text,
-                        'id_pic' => !empty($c['id_pic']) ? $c['id_pic'] : null,
-                        'hour' => $hourValue,
-                    ]);
-                }
-            } elseif (is_array($curativeActions)) {
-                foreach ($curativeActions as $index => $action) {
-                    $text = trim((string) $action);
-                    if ($text === '') {
-                        continue;
-                    }
-
-                    $rawHour = $curativeHours[$index] ?? null;
-                    $hourValue = $this->parseHour($rawHour);
-
-                    \App\Models\Curative::create([
-                        'id_problem' => $problem->id_problem,
-                        'curative' => $text,
-                        'id_pic' => !empty($curativePics[$index]) ? $curativePics[$index] : null,
-                        'hour' => $hourValue,
-                    ]);
-                }
-            }
-
-            // Normalize preventives payload (support both formats)
-            $preventivesNested = $request->input('preventives', []);
-            $preventiveActions = $request->input('preventive_actions', []);
-
-            if (is_array($preventivesNested) && count($preventivesNested) > 0) {
-                foreach ($preventivesNested as $p) {
-                    $text = isset($p['preventive']) ? trim((string) $p['preventive']) : '';
-                    if ($text === '') continue;
-                    \App\Models\Preventive::create([
-                        'id_problem' => $problem->id_problem,
-                        'preventive' => $text,
-                    ]);
-                }
-            } elseif (is_array($preventiveActions)) {
-                foreach ($preventiveActions as $action) {
-                    $text = trim((string) $action);
-                    if ($text === '') continue;
-                    \App\Models\Preventive::create([
-                        'id_problem' => $problem->id_problem,
-                        'preventive' => $text,
-                    ]);
-                }
-            }
+            $this->createCurativesFromRequest($problem, $request);
+            $this->createPreventivesFromRequest($problem, $request);
         });
 
         return response()->json(['success' => true]);
@@ -687,85 +717,6 @@ class ProblemController extends Controller
 
         $problem->save();
 
-        return response()->json(['success' => true]);
-    }
-
-    public function getProblemDetails($id)
-    {
-        $problem = Problem::findOrFail($id);
-        return response()->json([
-            'assigned_to_email' => $problem->assigned_to_email,
-        ]);
-    }
-
-    public function sendDispatchEmail(Request $request)
-    {
-        $validated = $request->validate([
-            'sendTo' => 'required|email',
-            'cc' => 'nullable|email',
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string',
-            'attachment' => 'nullable|file|mimes:pdf,jpg,png,docx,xlsx,xls|max:10240',
-            'problem_id' => 'required|integer|exists:problems,id_problem',
-        ]);
-
-        $problem = Problem::findOrFail($validated['problem_id']);
-        $problem->status = 'dispatched';
-        if (!$problem->dispatched_at) {
-            $now = now();
-            $problem->dispatched_at = $now;
-            if (!$problem->target) {
-                $problem->target = $now->copy()->addDays(5);
-            }
-        }
-        $problem->save();
-
-        $token = MicrosoftGraphMailer::ensureAccessToken();
-        if (!$token) {
-            return response()->json([
-                'success' => false,
-                'requires_auth' => true,
-                'login_url' => url('/login/microsoft'),
-                'message' => 'Microsoft OAuth required',
-            ], 401);
-        }
-
-        $attachments = null;
-        if ($request->file('attachment')) {
-            $f = $request->file('attachment');
-            $attachments = [[
-                'name' => $f->getClientOriginalName(),
-                'contentType' => $f->getMimeType(),
-                'bytes' => file_get_contents($f->getRealPath()),
-            ]];
-        }
-
-        $resp = MicrosoftGraphMailer::sendMail(
-            $token,
-            $validated['sendTo'],
-            $validated['cc'] ?? null,
-            $validated['subject'],
-            nl2br(e($validated['message'])),
-            $attachments
-        );
-
-        if ($resp->status() !== 202) {
-            $body = $resp->json();
-            $message = is_array($body) ? ($body['error']['message'] ?? 'Failed to send via Microsoft Graph') : 'Failed to send via Microsoft Graph';
-            Log::warning('graph_send_mail_failed', [
-                'status' => $resp->status(),
-                'body' => $body,
-                'to' => $validated['sendTo'],
-                'cc' => $validated['cc'] ?? null,
-            ]);
-            return response()->json(['success' => false, 'message' => $message], 500);
-        }
-
-        Log::info('graph_send_mail_success', [
-            'status' => $resp->status(),
-            'to' => $validated['sendTo'],
-            'cc' => $validated['cc'] ?? null,
-        ]);
         return response()->json(['success' => true]);
     }
 

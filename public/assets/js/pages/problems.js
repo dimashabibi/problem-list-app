@@ -34,6 +34,17 @@
     var myDropzone;
     var fltProjectChoices, fltKanbanChoices, fltGroupCodeChoices;
     var currentFilter = {};
+    var isAdmin = !!window.__isAdmin;
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return "";
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
 
     function currentProblemType() {
         var t = $('input[name="p_type"]:checked').val();
@@ -282,12 +293,44 @@
                             : "-";
                     },
                 },
-                { data: "project", className: "text-uppercase" },
-                { data: "kanban", className: "text-uppercase" },
-                { data: "item" },
-                { data: "location" },
-                { data: "problem" },
-                { data: "status" },
+                {
+                    data: "project",
+                    className: "text-uppercase",
+                    render: function (data) {
+                        return escapeHtml(data);
+                    },
+                },
+                {
+                    data: "kanban",
+                    className: "text-uppercase",
+                    render: function (data) {
+                        return escapeHtml(data);
+                    },
+                },
+                {
+                    data: "item",
+                    render: function (data) {
+                        return escapeHtml(data);
+                    },
+                },
+                {
+                    data: "location",
+                    render: function (data) {
+                        return escapeHtml(data);
+                    },
+                },
+                {
+                    data: "problem",
+                    render: function (data) {
+                        return escapeHtml(data);
+                    },
+                },
+                {
+                    data: "status",
+                    render: function (data) {
+                        return escapeHtml(data);
+                    },
+                },
                 {
                     data: "target",
                     render: function (data, type, row) {
@@ -347,17 +390,21 @@
                     orderable: false,
                     render: function (data, type, row) {
                         let updateButton = "";
+                        let deleteButton = "";
 
-                        if (row.status === "in_progress") {
-                            updateButton = `<button class="btn btn-sm btn-outline-primary btn-update-status" data-id="${data}" data-status="dispatched">Dispatched</button>`;
-                        } else if (row.status === "dispatched") {
-                            updateButton = `<button class="btn btn-sm btn-outline-primary btn-update-status" data-id="${data}" data-status="closed">Closed</button>`;
+                        if (isAdmin) {
+                            if (row.status === "in_progress") {
+                                updateButton = `<button class="btn btn-sm btn-outline-primary btn-update-status" data-id="${data}" data-status="dispatched">Dispatched</button>`;
+                            } else if (row.status === "dispatched") {
+                                updateButton = `<button class="btn btn-sm btn-outline-primary btn-update-status" data-id="${data}" data-status="closed">Closed</button>`;
+                            }
+                            deleteButton = `<button class="btn btn-sm btn-outline-danger me-2 btn-p-delete" data-id="${data}"><i data-lucide="trash"></i></button>`;
                         }
 
                         return `
                         <button class="btn btn-sm btn-outline-info me-2 btn-detail" data-id="${data}"><i data-lucide="eye"></i></button>
                         <button class="btn btn-sm btn-outline-primary me-2 btn-excel" data-id="${data}"><i data-lucide="file-spreadsheet"></i></button>
-                        <button class="btn btn-sm btn-outline-danger me-2 btn-p-delete" data-id="${data}"><i data-lucide="trash"></i></button>
+                        ${deleteButton}
                         ${updateButton}`;
                     },
                 },
@@ -441,11 +488,10 @@
                     var body = $(
                         '<div class="card-body d-flex flex-column"></div>',
                     );
-                    var title = $(
-                        '<h6 class="card-title text-truncate" title="' +
-                            (item.problem || "") +
-                            '"></h6>',
-                    ).text(item.problem || "-");
+                    var titleText = item.problem || "-";
+                    var title = $('<h6 class="card-title text-truncate"></h6>')
+                        .attr("title", titleText)
+                        .text(titleText);
                     var date = $(
                         '<div class="text-muted small mb-3"></div>',
                     ).text(dateStr);
@@ -611,6 +657,7 @@
                 uploadMultiple: true,
                 parallelUploads: 10,
                 maxFiles: 10,
+                maxFilesize: 2,
                 acceptedFiles: "image/*",
                 previewTemplate: previewTemplate,
                 previewsContainer: "#dropzone-preview",
@@ -1506,6 +1553,7 @@
             });
 
         $(document).on("click", ".btn-p-delete", function () {
+            if (!isAdmin) return;
             var id = $(this).data("id");
             if (window.Swal) {
                 Swal.fire({
@@ -1837,65 +1885,8 @@
                 });
         });
 
-        function openDispatchModal(problemId) {
-            ajax({
-                url: "/get-problem-details/" + problemId,
-                method: "GET",
-            }).done(function (response) {
-                $("#problem_id").val(problemId);
-                $("#sendTo").val(response.assigned_to_email || "");
-                var modal = new bootstrap.Modal(
-                    document.getElementById("dispatchModal"),
-                );
-                modal.show();
-            });
-        }
-
-        $("#dispatchForm")
-            .off("submit")
-            .on("submit", function (e) {
-                e.preventDefault();
-                var formData = new FormData(this);
-                $.ajax({
-                    url: "/send-dispatch-email",
-                    type: "POST",
-                    data: formData,
-                    contentType: false,
-                    processData: false,
-                    headers: { "X-CSRF-TOKEN": csrf() },
-                    success: function () {
-                        var el = document.getElementById("dispatchModal");
-                        var modal = bootstrap.Modal.getInstance(el);
-                        if (modal) modal.hide();
-                        if (window.Swal) {
-                            Swal.fire({
-                                icon: "success",
-                                title: "Email Sent",
-                                timer: 1500,
-                                showConfirmButton: false,
-                            });
-                        }
-                        if (table) table.ajax.reload(null, false);
-                    },
-                    error: function (xhr) {
-                        var json = xhr.responseJSON || {};
-                        if (json.requires_auth && json.login_url) {
-                            window.location.href = json.login_url;
-                            return;
-                        }
-                        if (window.Swal) {
-                            Swal.fire({
-                                icon: "error",
-                                title: json.message || "Failed to send email",
-                            });
-                        } else {
-                            alert(json.message || "Failed to send email.");
-                        }
-                    },
-                });
-            });
-
         $(document).on("click", ".btn-update-status", function () {
+            if (!isAdmin) return;
             var problemId = $(this).data("id");
             var currentStatus = $(this).data("status");
             var $btn = $(this);
@@ -1903,11 +1894,6 @@
             var statusLabel = currentStatus
                 .replace("_", " ")
                 .replace(/\b\w/g, (l) => l.toUpperCase());
-
-            if (currentStatus === "dispatched") {
-                openDispatchModal(problemId);
-                return;
-            }
 
             if (window.Swal) {
                 Swal.fire({

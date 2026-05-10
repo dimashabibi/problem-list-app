@@ -1,5 +1,17 @@
 
 ;(function(){
+  var canAdmin = !!window.__canAdmin;
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   function csrf() {
     var meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
@@ -30,6 +42,42 @@
         return;
     }
 
+    var columns = [];
+    if (canAdmin) {
+      columns.push({
+        data: 'id_project',
+        orderable: false,
+        className: 'text-center',
+        render: function (data) {
+          return `<input type="checkbox" class="form-check-input project-checkbox" value="${data}">`;
+        }
+      });
+    }
+
+    columns.push(
+      { 
+        data: null, 
+        render: function (data, type, row, meta) {
+          return meta.row + 1;
+        }
+      },
+      { data: 'project_name', className: 'text-uppercase', render: function(data){ return escapeHtml(data); } },
+      { data: 'description', className: 'text-wrap', render: function(data){ return escapeHtml(data); } }
+    );
+
+    if (canAdmin) {
+      columns.push({
+        data: 'id_project',
+        orderable: false,
+        render: function(data, type, row) {
+          const name = escapeHtml(row.project_name || '');
+          const desc = escapeHtml(row.description || '');
+          return `<button class="btn btn-sm btn-outline-primary me-2 btn-edit" data-id="${data}" data-name="${name}" data-desc="${desc}">Edit</button>` +
+                 `<button class="btn btn-sm btn-outline-danger btn-delete" data-id="${data}">Delete</button>`;
+        }
+      });
+    }
+
     table = $('#table-project').DataTable({
         ajax: {
             url: '/projects/list',
@@ -38,39 +86,13 @@
         return json;
         }
         },
-        columns: [
-            {
-                data: 'id_project',
-                orderable: false,
-                className: 'text-center',
-                render: function (data) {
-                    return `<input type="checkbox" class="form-check-input project-checkbox" value="${data}">`;
-                }
-            },
-            { 
-                data: null, 
-                render: function (data, type, row, meta) {
-                    return meta.row + 1;
-                }
-            },
-            { data: 'project_name', className: 'text-uppercase' },
-            { data: 'description', className: 'text-wrap' },
-            { 
-                data: 'id_project',
-                orderable: false,
-                render: function(data, type, row) {
-                    // Escape data for attributes
-                    const name = (row.project_name || '').replace(/"/g, '&quot;');
-                    const desc = (row.description || '').replace(/"/g, '&quot;');
-                    return `<button class="btn btn-sm btn-outline-primary me-2 btn-edit" data-id="${data}" data-name="${name}" data-desc="${desc}">Edit</button>` +
-                           `<button class="btn btn-sm btn-outline-danger btn-delete" data-id="${data}">Delete</button>`;
-                }
-            }
-        ],
+        columns: columns,
         responsive: true,
         drawCallback: function() {
-            $('#selectAll').prop('checked', false);
-            toggleBulkDeleteBtn();
+            if (canAdmin) {
+              $('#selectAll').prop('checked', false);
+              toggleBulkDeleteBtn();
+            }
         }
     });
   }

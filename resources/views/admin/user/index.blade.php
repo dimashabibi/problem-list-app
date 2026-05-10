@@ -37,7 +37,7 @@
     <script src="{{ asset('assets/js/pages/users.js') }}"></script>
     <script>
         $(function(){
-            $('#usersTableContainer').load('/admin/users/table', function(){
+            $('#usersTableContainer').load('/users/table', function(){
                 if (window.loadUsers) window.loadUsers();
             });
         });

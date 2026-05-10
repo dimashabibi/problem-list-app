@@ -22,8 +22,12 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Items</h5>
                         <div>
-                            <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
-                            <button id="btnAdd" class="btn btn-primary">Add Item</button>
+                            @can('admin')
+                                <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
+                            @endcan
+                            @can('admin')
+                                <button id="btnAdd" class="btn btn-primary">Add Item</button>
+                            @endcan
                         </div>
                     </div>
                     <div class="card-body">
@@ -33,7 +37,9 @@
                     </div>
                 </div>
 
-                @include('admin.item.modaladd')
+                @can('admin')
+                    @include('admin.item.modaladd')
+                @endcan
             </div>
 
             @include('layouts.footer')
@@ -44,7 +50,7 @@
     <script src="{{ asset('assets/js/pages/items.js') }}"></script>
     <script>
         $(function() {
-            $('#tableContainer').load('/admin/items/table', function() {
+            $('#tableContainer').load('/items/table', function() {
                 if (window.loadItems) window.loadItems();
             });
         });

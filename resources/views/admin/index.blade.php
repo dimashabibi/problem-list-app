@@ -27,8 +27,14 @@
                             <div class="page-title-box">
                                 <h4 class="mb-0 fw-semibold">Dashboard</h4>
                             </div>
-                            <form action="{{ route('admin.dashboard') }}" method="GET"
+                            <form action="{{ route('dashboard') }}" method="GET"
                                 class="d-flex align-items-center gap-2">
+                                <select name="period" class="form-select form-select-sm">
+                                    <option value="">Custom</option>
+                                    <option value="weekly" @selected(($period ?? '') === 'weekly')>Weekly</option>
+                                    <option value="monthly" @selected(($period ?? '') === 'monthly')>Monthly</option>
+                                    <option value="yearly" @selected(($period ?? '') === 'yearly')>Yearly</option>
+                                </select>
                                 <input type="date" name="start_date" class="form-control form-control-sm"
                                     value="{{ $startDate ?? '' }}" placeholder="Start Date">
                                 <span class="text-muted">-</span>
@@ -37,8 +43,8 @@
                                 <button type="submit" class="btn btn-sm btn-primary">
                                     <i data-lucide="filter" class="w-4 h-4"></i>
                                 </button>
-                                @if (request('start_date') || request('end_date'))
-                                    <a href="{{ route('admin.dashboard') }}" class="btn btn-sm btn-secondary">
+                                @if (request('start_date') || request('end_date') || request('period'))
+                                    <a href="{{ route('dashboard') }}" class="btn btn-sm btn-secondary">
                                         Clear
                                     </a>
                                 @endif
@@ -188,21 +194,7 @@
                                 <div>
                                     <h4 class="card-title mb-0">Unresolved SK Problems.</h4>
                                 </div>
-                                <div class="dropdown">
-                                    <a href="#"
-                                        class="dropdown-toggle btn btn-sm btn-link text-uppercase fw-semibold px-0"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                        Weekly
-                                    </a>
-                                    <div class="dropdown-menu dropdown-menu-end">
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Week</a>
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Months</a>
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Years</a>
-                                    </div>
-                                </div>
+
                             </div>
 
                             <div class="card-body">
@@ -224,21 +216,6 @@
                                 <div>
                                     <h4 class="card-title mb-0">Unresolved KS Problems.</h4>
                                 </div>
-                                <div class="dropdown">
-                                    <a href="#"
-                                        class="dropdown-toggle btn btn-sm btn-link text-uppercase fw-semibold px-0"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                        Weekly
-                                    </a>
-                                    <div class="dropdown-menu dropdown-menu-end">
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Week</a>
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Months</a>
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Years</a>
-                                    </div>
-                                </div>
                             </div>
 
                             <div class="card-body">
@@ -258,21 +235,7 @@
                                 <div>
                                     <h4 class="card-title mb-0">Unresolved KD Problems.</h4>
                                 </div>
-                                <div class="dropdown">
-                                    <a href="#"
-                                        class="dropdown-toggle btn btn-sm btn-link text-uppercase fw-semibold px-0"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                        Weekly
-                                    </a>
-                                    <div class="dropdown-menu dropdown-menu-end">
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Week</a>
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Months</a>
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Years</a>
-                                    </div>
-                                </div>
+
                             </div>
 
                             <div class="card-body">
@@ -285,7 +248,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 <div class="row">
@@ -295,29 +257,12 @@
                                 <div>
                                     <h4 class="card-title mb-0">Manufacturing Problem Collection</h4>
                                 </div>
-                                <div>
-                                    <div class="dropdown">
-                                        <a href="#"
-                                            class="dropdown-toggle btn btn-sm btn-link text-uppercase fw-semibold px-0"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
-                                            Weekly
-                                        </a>
-                                        <div class="dropdown-menu dropdown-menu-end">
-                                            <!-- item-->
-                                            <a href="#!" class="dropdown-item">Week</a>
-                                            <!-- item-->
-                                            <a href="#!" class="dropdown-item">Months</a>
-                                            <!-- item-->
-                                            <a href="#!" class="dropdown-item">Years</a>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                             <div class="card-body">
                                 <div class="text-center">
                                     <p class="text-muted mb-4">You have <span
                                             class="text-success fw-bold">{{ $thisWeekProblems['pie'] }}</span>
-                                        issues in the manufacturing process this week.</p>
+                                        issues in the manufacturing process.</p>
                                 </div>
 
                                 <div id="pieChart" class="apex-charts"></div>
@@ -331,21 +276,6 @@
                                 <div>
                                     <h4 class="card-title mb-0">Unresolved Manufacturing Problems.</h4>
                                 </div>
-                                <div class="dropdown">
-                                    <a href="#"
-                                        class="dropdown-toggle btn btn-sm btn-link text-uppercase fw-semibold px-0"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                        Weekly
-                                    </a>
-                                    <div class="dropdown-menu dropdown-menu-end">
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Week</a>
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Months</a>
-                                        <!-- item-->
-                                        <a href="#!" class="dropdown-item">Years</a>
-                                    </div>
-                                </div>
                             </div>
 
                             <div class="card-body">
@@ -357,20 +287,6 @@
                                 <div id="columnChart1" class="apex-charts"></div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-xl-3 col-lg-6">
-
-                    </div>
-
-                    <div class="col-xl-4 col-lg-6">
-
-                    </div>
-
-                    <div class="col-xl-5 col-lg-12">
-
                     </div>
                 </div>
             </div>

@@ -9,9 +9,6 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\UserAdminController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Auth\ResetPasswordController;
-use App\Http\Controllers\MicrosoftAuthController;
 
 use App\Http\Controllers\DashboardController;
 
@@ -19,103 +16,100 @@ Route::get('/', function () {
     return redirect('/login');
 });
 
-
 Route::get('/login', [LoginController::class, 'show'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-// Password Reset Routes
-Route::prefix('auth')->group(function () {
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])
-        ->name('password.email')
-        ->middleware('throttle:5,1');
-    Route::post('/reset-password', [ResetPasswordController::class, 'reset'])
-        ->name('password.update')
-        ->middleware('throttle:10,1');
-});
-
-// Optional: Reset password form page
-Route::get('/reset-password', [ResetPasswordController::class, 'showResetForm'])
-    ->name('password.reset')
-    ->middleware('throttle:10,1');
-
-Route::get('/problems/create', [ProblemController::class, 'create'])->name('problems.create');
-
 Route::middleware('auth')->group(function () {
-    Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
-    Route::get('/projects/list', [ProjectController::class, 'list'])->name('projects.list');
-    Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
-    Route::post('/projects/bulk', [ProjectController::class, 'bulkStore'])->name('projects.bulk');
-    Route::put('/projects/{id}', [ProjectController::class, 'update'])->name('projects.update');
-    Route::delete('/projects/bulk', [ProjectController::class, 'bulkDestroy']);
-    Route::delete('/projects/{id}', [ProjectController::class, 'destroy'])->name('projects.destroy');
-    Route::get('/admin/projects', function () {
-        return view('admin.project.index');
-    })->name('admin.projects.index');
-    Route::get('/admin/projects/table', function () {
-        return view('admin.project.table');
-    })->name('admin.projects.table');
+    Route::prefix('projects')->group(function () {
+        Route::get('/', [ProjectController::class, 'index'])->name('projects.index');
+        Route::get('/table', [ProjectController::class, 'table'])->name('projects.table');
+        Route::get('/list', [ProjectController::class, 'list'])->name('projects.list');
+        Route::middleware('can:admin')->group(function () {
+            Route::post('/', [ProjectController::class, 'store'])->name('projects.store');
+            Route::post('/bulk', [ProjectController::class, 'bulkStore'])->name('projects.bulk');
+            Route::put('/{id}', [ProjectController::class, 'update'])->name('projects.update');
+            Route::delete('/bulk', [ProjectController::class, 'bulkDestroy']);
+            Route::delete('/{id}', [ProjectController::class, 'destroy'])->name('projects.destroy');
+        });
+    });
 
-    Route::get('/admin/kanbans', [KanbanController::class, 'index'])->name('admin.kanbans.index');
-    Route::get('/admin/kanbans/table', [KanbanController::class, 'table'])->name('admin.kanbans.table');
-    Route::get('/kanbans/list', [KanbanController::class, 'list'])->name('kanbans.list');
-    Route::post('/kanbans', [KanbanController::class, 'store'])->name('kanbans.store');
-    Route::post('/kanbans/bulk', [KanbanController::class, 'bulkStore'])->name('kanbans.bulk');
-    Route::put('/kanbans/{id}', [KanbanController::class, 'update'])->name('kanbans.update');
-    Route::delete('/kanbans/{id}', [KanbanController::class, 'destroy'])->name('kanbans.destroy');
-    Route::delete('/kanbans/bulk', [KanbanController::class, 'bulkDestroy'])->name('kanbans.bulk');
+    Route::prefix('items')->group(function () {
+        Route::get('/', [ItemController::class, 'index'])->name('items.index');
+        Route::get('/table', [ItemController::class, 'table'])->name('items.table');
+        Route::get('/list', [ItemController::class, 'list'])->name('items.list');
+        Route::middleware('can:admin')->group(function () {
+            Route::post('/', [ItemController::class, 'store'])->name('items.store');
+            Route::post('/bulk', [ItemController::class, 'bulkStore'])->name('items.bulk');
+            Route::put('/{id}', [ItemController::class, 'update'])->name('items.update');
+            Route::delete('/bulk', [ItemController::class, 'bulkDestroy']);
+            Route::delete('/{id}', [ItemController::class, 'destroy'])->name('items.destroy');
+        });
+    });
 
-    Route::get('/admin/locations', [LocationController::class, 'index'])->name('admin.locations.index');
-    Route::get('/admin/locations/table', [LocationController::class, 'table'])->name('admin.locations.table');
-    Route::get('/locations/list', [LocationController::class, 'list'])->name('locations.list');
-    Route::post('/locations', [LocationController::class, 'store'])->name('locations.store');
-    Route::post('/locations/bulk', [LocationController::class, 'bulkStore'])->name('locations.bulk');
-    Route::put('/locations/{id}', [LocationController::class, 'update'])->name('locations.update');
-    Route::delete('/locations/{id}', [LocationController::class, 'destroy'])->name('locations.destroy');
-    Route::delete('/locations/bulk', [LocationController::class, 'bulkDestroy'])->name('locations.bulk.destroy');
+    Route::prefix('kanbans')->group(function () {
+        Route::get('/', [KanbanController::class, 'index'])->name('kanbans.index');
+        Route::get('/table', [KanbanController::class, 'table'])->name('kanbans.table');
+        Route::get('/list', [KanbanController::class, 'list'])->name('kanbans.list');
+        Route::middleware('can:admin')->group(function () {
+            Route::post('/', [KanbanController::class, 'store'])->name('kanbans.store');
+            Route::post('/bulk', [KanbanController::class, 'bulkStore'])->name('kanbans.bulk');
+            Route::put('/{id}', [KanbanController::class, 'update'])->name('kanbans.update');
+            Route::delete('/{id}', [KanbanController::class, 'destroy'])->name('kanbans.destroy');
+            Route::delete('/bulk', [KanbanController::class, 'bulkDestroy'])->name('kanbans.bulk.destroy');
+        });
+    });
 
-    Route::get('/admin/items', [ItemController::class, 'index'])->name('admin.items.index');
-    Route::get('/admin/items/table', [ItemController::class, 'table'])->name('admin.items.table');
-    Route::get('/items/list', [ItemController::class, 'list'])->name('items.list');
-    Route::post('/items', [ItemController::class, 'store'])->name('items.store');
-    Route::post('/items/bulk', [ItemController::class, 'bulkStore'])->name('items.bulk');
-    Route::put('/items/{id}', [ItemController::class, 'update'])->name('items.update');
-    Route::delete('/items/bulk', [ItemController::class, 'bulkDestroy']);
-    Route::delete('/items/{id}', [ItemController::class, 'destroy'])->name('items.destroy');
+    Route::prefix('locations')->group(function () {
+        Route::get('/', [LocationController::class, 'index'])->name('locations.index');
+        Route::get('/table', [LocationController::class, 'table'])->name('locations.table');
+        Route::get('/list', [LocationController::class, 'list'])->name('locations.list');
+        Route::middleware('can:admin')->group(function () {
+            Route::post('/', [LocationController::class, 'store'])->name('locations.store');
+            Route::post('/bulk', [LocationController::class, 'bulkStore'])->name('locations.bulk');
+            Route::put('/{id}', [LocationController::class, 'update'])->name('locations.update');
+            Route::delete('/{id}', [LocationController::class, 'destroy'])->name('locations.destroy');
+            Route::delete('/bulk', [LocationController::class, 'bulkDestroy'])->name('locations.bulk.destroy');
+        });
+    });
 
-    Route::get('/admin/users', [UserAdminController::class, 'index'])->name('admin.users.index');
-    Route::get('/admin/users/table', [UserAdminController::class, 'table'])->name('admin.users.table');
-    Route::get('/users/list', [UserAdminController::class, 'list'])->name('users.list');
-    Route::post('/users', [UserAdminController::class, 'store'])->name('users.store');
-    Route::put('/users/{id}', [UserAdminController::class, 'update'])->name('users.update');
-    Route::delete('/users/{id}', [UserAdminController::class, 'destroy'])->name('users.destroy');
-    Route::delete('/users/bulk', [UserAdminController::class, 'bulkDestroy'])->name('users.bulk.destroy');
+    Route::prefix('machines')->group(function () {
+        Route::get('/', [MachineController::class, 'index'])->name('machines.index');
+        Route::get('/list', [MachineController::class, 'list'])->name('machines.list');
+        Route::middleware('can:admin')->group(function () {
+            Route::post('/store', [MachineController::class, 'store'])->name('machines.store');
+            Route::put('/{id}', [MachineController::class, 'update'])->name('machines.update');
+            Route::delete('/{id}', [MachineController::class, 'destroy'])->name('machines.destroy');
+            Route::delete('/bulk', [MachineController::class, 'bulkDestroy'])->name('machines.bulk.destroy');
+        });
+    });
 
-    Route::get('/admin/problems', [ProblemController::class, 'index'])->name('admin.problems.index');
-    Route::get('/admin/problems/table', [ProblemController::class, 'table'])->name('admin.problems.table');
-    Route::get('/admin/problems/gallery', [ProblemController::class, 'gallery'])->name('admin.problems.gallery');
-    Route::get('/problems/list', [ProblemController::class, 'list'])->name('problems.list');
-    Route::post('/problems/store', [ProblemController::class, 'store'])->name('problems.store');
-    Route::put('/problems/{id}', [ProblemController::class, 'update'])->name('problems.update');
-    Route::get('/problems/export-group', [ProblemController::class, 'exportGroup'])->name('problems.export_group');
-    Route::get('/problems/export-list', [ProblemController::class, 'exportList'])->name('problems.export_list');
-    Route::get('/problems/{id}/export', [ProblemController::class, 'export'])->name('problems.export');
+    Route::prefix('users')->middleware('can:admin')->group(function () {
+        Route::get('/', [UserAdminController::class, 'index'])->name('users.index');
+        Route::get('/table', [UserAdminController::class, 'table'])->name('users.table');
+        Route::get('/list', [UserAdminController::class, 'list'])->name('users.list');
+        Route::post('/', [UserAdminController::class, 'store'])->name('users.store');
+        Route::put('/{id}', [UserAdminController::class, 'update'])->name('users.update');
+        Route::delete('/{id}', [UserAdminController::class, 'destroy'])->name('users.destroy');
+        Route::delete('/bulk', [UserAdminController::class, 'bulkDestroy'])->name('users.bulk.destroy');
+    });
+
+    Route::prefix('problems')->group(function () {
+        Route::get('/', [ProblemController::class, 'index'])->name('problems.index');
+        Route::get('/table', [ProblemController::class, 'table'])->name('problems.table');
+        Route::get('/gallery', [ProblemController::class, 'gallery'])->name('problems.gallery');
+        Route::get('/create', [ProblemController::class, 'create'])->name('problems.create');
+        Route::get('/list', [ProblemController::class, 'list'])->name('problems.list');
+        Route::post('/store', [ProblemController::class, 'store'])->name('problems.store');
+        Route::put('/{id}', [ProblemController::class, 'update'])->name('problems.update');
+        Route::delete('/{id}', [ProblemController::class, 'destroy'])->name('problems.destroy')->middleware('can:admin');
+        Route::get('/export-group', [ProblemController::class, 'exportGroup'])->name('problems.export_group');
+        Route::get('/export-list', [ProblemController::class, 'exportList'])->name('problems.export_list');
+        Route::get('/{id}/export', [ProblemController::class, 'export'])->name('problems.export');
+    });
+
     Route::get('/problem/export', [ProblemController::class, 'exportProblem'])->name('problem.export');
-    Route::post('/update-status/{id}', [ProblemController::class, 'updateStatus']);
-    Route::get('/get-problem-details/{id}', [ProblemController::class, 'getProblemDetails']);
-    Route::post('/send-dispatch-email', [ProblemController::class, 'sendDispatchEmail']);
-    Route::delete('/problems/{id}', [ProblemController::class, 'destroy'])->name('problems.destroy');
-
-    Route::get('/admin/machines', [MachineController::class, 'index'])->name('machines.index');
-    Route::get('/machines/list', [MachineController::class, 'list'])->name('machines.list');
-    Route::post('/machines/store', [MachineController::class, 'store'])->name('machines.store');
-    Route::put('/machines/{id}', [MachineController::class, 'update'])->name('machines.update');
-    Route::delete('/machines/{id}', [MachineController::class, 'destroy'])->name('machines.destroy');
-    Route::delete('/machines/bulk', [MachineController::class, 'bulkDestroy'])->name('machines.bulk.destroy');
+    Route::post('/update-status/{id}', [ProblemController::class, 'updateStatus'])->middleware('can:admin');
 });
-
-Route::get('/login/microsoft', [MicrosoftAuthController::class, 'redirect']);
-Route::get('/login/microsoft/callback', [MicrosoftAuthController::class, 'callback']);
-Route::get('/callback', [MicrosoftAuthController::class, 'callback']);

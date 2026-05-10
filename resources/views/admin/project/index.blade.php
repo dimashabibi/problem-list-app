@@ -22,8 +22,12 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Projects</h5>
                         <div>
-                            <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
-                            <button id="btnAdd" class="btn btn-primary">Add Project</button>
+                            @can('admin')
+                                <button id="btnBulkDelete" class="btn btn-danger d-none me-2">Delete Selected</button>
+                            @endcan
+                            @can('admin')
+                                <button id="btnAdd" class="btn btn-primary">Add Project</button>
+                            @endcan
                         </div>
                     </div>
                     <div class="card-body">
@@ -33,7 +37,9 @@
                     </div>
                 </div>
 
-                @include('admin.project.modaladd')
+                @can('admin')
+                    @include('admin.project.modaladd')
+                @endcan
             </div>
 
             @include('layouts.footer')
@@ -44,7 +50,7 @@
     <script src="{{ asset('assets/js/pages/projects.js') }}"></script>
     <script>
         $(function() {
-            $('#tableContainer').load('/admin/projects/table', function() {
+            $('#tableContainer').load('/projects/table', function() {
                 if (window.loadProjects) window.loadProjects();
             });
         });
