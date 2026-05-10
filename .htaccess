@@ -26,6 +26,5 @@
     # Pastikan mengarah ke public/index.php jika file fisik tidak ditemukan
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ public/$1 [L]
-    RewriteRule ^ public/index.php [L]
+    RewriteRule ^ index.php [L]
 </IfModule>
