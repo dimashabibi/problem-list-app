@@ -6,4 +6,4 @@
 <meta name="description" content="Admin Dashboard Template." />
 <meta name="author" content="FoxPixel" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<link rel="shortcut icon" href="{{ asset('assets/images/favicon.png') }}">
+<link rel="icon" type="image/x-icon" href="{{ asset('assets/images/favicon.ico') }}">
