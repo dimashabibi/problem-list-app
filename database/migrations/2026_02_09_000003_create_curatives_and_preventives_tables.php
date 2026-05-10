@@ -11,37 +11,37 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('curatives', function (Blueprint $table) {
-            $table->id('id_curative');
-            $table->integer('id_problem');
-            $table->integer('id_pic')->nullable(); // Foreign Key to locations table
-            $table->text('curative');
-            $table->timestamps();
+        if (!Schema::hasTable('curatives')) {
+            Schema::create('curatives', function (Blueprint $table) {
+                $table->id('id_curative');
+                $table->integer('id_problem');
+                $table->integer('id_pic')->nullable();
+                $table->text('curative');
+                $table->decimal('hour', 8, 2)->nullable();
+                $table->timestamps();
 
-            // Foreign Keys
-            $table->foreign('id_problem')->references('id_problem')->on('problems')->onDelete('cascade');
-            // Assuming locations table uses id_location as primary key
-            $table->foreign('id_pic')->references('id_location')->on('locations')->onDelete('set null');
+                $table->foreign('id_problem')->references('id_problem')->on('problems')->onDelete('cascade');
+                $table->foreign('id_pic')->references('id_location')->on('locations')->onDelete('set null');
 
-            // Indexes for performance
-            $table->index('id_problem');
-            $table->index('id_pic');
-            $table->index('created_at');
-        });
+                $table->index('id_problem');
+                $table->index('id_pic');
+                $table->index('created_at');
+            });
+        }
 
-        Schema::create('preventives', function (Blueprint $table) {
-            $table->id('id_preventive');
-            $table->integer('id_problem');
-            $table->text('preventive');
-            $table->timestamps();
+        if (!Schema::hasTable('preventives')) {
+            Schema::create('preventives', function (Blueprint $table) {
+                $table->id('id_preventive');
+                $table->integer('id_problem');
+                $table->text('preventive');
+                $table->timestamps();
 
-            // Foreign Keys
-            $table->foreign('id_problem')->references('id_problem')->on('problems')->onDelete('cascade');
+                $table->foreign('id_problem')->references('id_problem')->on('problems')->onDelete('cascade');
 
-            // Indexes for performance
-            $table->index('id_problem');
-            $table->index('created_at');
-        });
+                $table->index('id_problem');
+                $table->index('created_at');
+            });
+        }
     }
 
     /**

@@ -16,13 +16,15 @@ return new class extends Migration
                 $table->integer('id_kanban')->autoIncrement();
                 $table->integer('project_id')->nullable();
                 $table->string('kanban_name', 20)->nullable();
+                $table->string('part_name', 100)->nullable();
+                $table->integer('part_number')->nullable();
                 $table->timestamps();
                 $table->softDeletes();
 
                 $table->foreign('project_id')
-                      ->references('id_project')->on('projects')
-                      ->onDelete('restrict')
-                      ->onUpdate('cascade');
+                    ->references('id_project')->on('projects')
+                    ->onDelete('restrict')
+                    ->onUpdate('cascade');
             });
         }
     }
