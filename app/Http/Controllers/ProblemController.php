@@ -436,7 +436,7 @@ class ProblemController extends Controller
             'preventive_actions' => 'nullable|array',
             'preventive_actions.*' => 'string|nullable',
             'attachment' => 'nullable|array',
-            'attachment.*' => 'image|max:2048',
+            'attachment.*' => 'image|max:5120',
             'id_machine' => 'nullable|integer|exists:machines,id_machine',
             'type_saibo' => 'nullable|in:baru,berulang',
             'classification' => 'nullable|in:konst,komp,model',
